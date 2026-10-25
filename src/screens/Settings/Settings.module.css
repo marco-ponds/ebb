@@ -1,0 +1,238 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card);
+  min-height: 100vh;
+  padding: var(--space-5) var(--gutter) var(--space-8);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 900;
+  color: var(--text);
+}
+
+.sectionTitle {
+  margin: var(--space-4) 0 0 var(--space-2);
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.intro {
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--fs-card-title);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.help {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.addButton {
+  width: 100%;
+  margin-top: var(--space-2);
+  color: var(--lavender);
+}
+
+.panel {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-button);
+  background: var(--tint-butter);
+  color: var(--butter);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wide {
+  width: 100%;
+}
+
+.restore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.restore[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.restore:focus-within {
+  outline: 3px solid var(--lavender);
+  outline-offset: 2px;
+}
+
+/* A real file input, hidden from sight but not from assistive technology or the keyboard. */
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+}
+
+.previewCounts {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+  color: var(--text);
+}
+
+.previewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.previewActions > * {
+  flex: 1;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2) 0;
+  text-align: center;
+}
+
+.version {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.update {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--lavender);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-card-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus-visible {
+  outline: 3px solid var(--lavender);
+  outline-offset: 2px;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.sheetText {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
