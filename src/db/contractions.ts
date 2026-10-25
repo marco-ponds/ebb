@@ -66,9 +66,12 @@ export function stopContraction(id: string, now: number = Date.now()): Promise<C
   });
 }
 
-/** "Started by mistake": removes the row for good. */
+/** "Started by mistake": removes the row for good. Only a contraction still in progress qualifies. */
 export function discardContraction(id: string): Promise<void> {
   return runWrite(async () => {
+    // A stale tab must not hard-delete a contraction another tab already stopped (and maybe rated).
+    const row = await requireContraction(id);
+    if (row.endAt !== null) throw new InvariantError('This contraction has already stopped');
     await write('contractions', id, null);
     await clearUndo();
   });
