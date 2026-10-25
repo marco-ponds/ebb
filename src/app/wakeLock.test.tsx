@@ -1,6 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isWakeLockSupported, useWakeLock } from './wakeLock';
+import { useAppStore } from '../state/store';
+import type { Session } from '../db/types';
+import { isWakeLockSupported, useAppWakeLock, useWakeLock, useWakeLockState } from './wakeLock';
 
 interface FakeSentinel extends EventTarget {
   released: boolean;
@@ -129,5 +131,40 @@ describe('useWakeLock', () => {
     await flush();
     unmount();
     expect(sentinel.release).toHaveBeenCalled();
+  });
+});
+
+describe('useAppWakeLock', () => {
+  const session = { id: 's', name: null, startedAt: 1, endedAt: null, notes: '', createdAt: 1, updatedAt: 1, thresholdMetAt: null } as Session;
+  afterEach(() => {
+    removeWakeLock();
+    useAppStore.setState({ activeSession: null });
+  });
+
+  it('holds the lock for the whole session, independent of which screen is mounted, and releases it when the session ends', async () => {
+    const sentinel = fakeSentinel();
+    const request = vi.fn(async () => sentinel);
+    installWakeLock(request);
+    useAppStore.setState({ activeSession: session });
+    const { result } = renderHook(() => {
+      useAppWakeLock();
+      return useWakeLockState();
+    });
+    await flush();
+    expect(request).toHaveBeenCalledWith('screen');
+    expect(result.current).toBe('held');
+
+    act(() => useAppStore.setState({ activeSession: null }));
+    await flush();
+    expect(sentinel.release).toHaveBeenCalled();
+    expect(result.current).toBe('off');
+  });
+
+  it('asks for nothing without a session', async () => {
+    const request = vi.fn(async () => fakeSentinel());
+    installWakeLock(request);
+    renderHook(() => useAppWakeLock());
+    await flush();
+    expect(request).not.toHaveBeenCalled();
   });
 });

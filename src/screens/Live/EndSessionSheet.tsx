@@ -15,7 +15,7 @@ export interface EndSessionSheetProps {
 }
 
 /**
- * "End this session?" Ending releases the wake lock (the Live screen unmounts, and useWakeLock releases on unmount)
+ * "End this session?" Ending releases the wake lock (the app-level useAppWakeLock sees no active session and releases)
  * and goes to the Start screen.
  */
 export function EndSessionSheet({ open, onClose, sessionId, count, lengthMs }: EndSessionSheetProps) {

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { create } from 'zustand';
+import { useAppStore } from '../state/store';
 
 export type WakeLockState = 'held' | 'unavailable' | 'off';
 
@@ -64,4 +66,23 @@ export function useWakeLock(active: boolean, enabled: boolean): WakeLockState {
   }, [wanted]);
 
   return wanted ? state : 'off';
+}
+
+const useWakeLockStatus = create<{ state: WakeLockState }>(() => ({ state: 'off' }));
+
+/** What the app-level hook currently holds, for the Live header pill. */
+export const useWakeLockState = (): WakeLockState => useWakeLockStatus((s) => s.state);
+
+/**
+ * Mounted once at the app level: the screen stays on for the whole session, whichever screen is open
+ * (a partner reading the charts to the midwife must not see the phone lock), and is released when the session ends.
+ */
+export function useAppWakeLock(): void {
+  const hasSession = useAppStore((s) => s.activeSession !== null);
+  const keepAwake = useAppStore((s) => s.settings.keepAwake);
+  const state = useWakeLock(hasSession, keepAwake);
+  useEffect(() => {
+    useWakeLockStatus.setState({ state });
+    return () => useWakeLockStatus.setState({ state: 'off' });
+  }, [state]);
 }

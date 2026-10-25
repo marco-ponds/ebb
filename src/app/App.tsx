@@ -10,6 +10,7 @@ import { useBootStore } from './boot';
 import { decideLanding } from './landing';
 import { navigate, useRoute, type Route } from './router';
 import { useApplyTheme } from './theme';
+import { useAppWakeLock } from './wakeLock';
 
 // Secondary screens load on demand to keep the initial bundle small; the SW still precaches the chunks.
 const HistoryScreen = lazy(() => import('../screens/History').then((m) => ({ default: m.HistoryScreen })));
@@ -99,6 +100,7 @@ function Shell() {
 
 export function App() {
   useApplyTheme();
+  useAppWakeLock();
   return (
     <>
       <Shell />

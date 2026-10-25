@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useWakeLock } from '../../app/wakeLock';
+import { useWakeLockState } from '../../app/wakeLock';
 import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useNow } from '../../lib/useNow';
 import { useAppStore } from '../../state/store';
@@ -54,7 +54,7 @@ function LiveSession({ session }: { session: Session }) {
   const contractions = useContractions(session.id) ?? NONE_C;
   const events = useEvents(session.id) ?? NONE_E;
   const active = useAppStore((s) => s.activeContraction);
-  const wakeLock = useWakeLock(true, settings.keepAwake);
+  const wakeLock = useWakeLockState();
   const { toggle, announcement, problem, clearProblem } = useContractionToggle(session.id, active, settings.haptics);
   const banner = useThresholdBanner(session, contractions, settings.thresholds);
 
