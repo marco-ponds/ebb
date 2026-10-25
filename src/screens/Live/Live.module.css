@@ -337,3 +337,78 @@
     grid-row: 21;
   }
 }
+
+/* ---- action row ---- */
+.actionRow {
+  display: flex;
+  gap: var(--gap-card);
+}
+
+.action {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+}
+
+/* ---- event sheet ---- */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.choice {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-body);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.choice[aria-checked='true'] {
+  background: var(--lavender);
+  color: var(--ink);
+}
+
+.noteField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.noteLabel {
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.noteInput {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 2px solid var(--hairline);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-card-title);
+  font-weight: 700;
+}
+
+.confirmation {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+  color: var(--text);
+}
+
+.gentle {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-muted);
+}
