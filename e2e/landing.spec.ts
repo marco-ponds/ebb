@@ -40,8 +40,13 @@ test('a malformed hash falls back to Start instead of breaking', async ({ page }
   await expect(page.getByRole('heading', { level: 1, name: "Whenever you're ready." })).toBeVisible();
 });
 
+// The skeleton is only on screen between SKELETON_AFTER_MS (300 ms) and the database opening, so the
+// injected delay must leave a window wide enough for Playwright's first assertion to land under
+// parallel-worker load (a 600 ms delay left ~300 ms and made this test fail whenever workers competed).
+const OPEN_DELAY_MS = 2000;
+
 test('a slow database read shows the skeleton, and the page is never blank or white', async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.addInitScript((delay: number) => {
     const open = indexedDB.open.bind(indexedDB);
     indexedDB.open = ((...args: Parameters<typeof open>) => {
       const handlers: Record<string | symbol, unknown> = {};
@@ -49,7 +54,7 @@ test('a slow database read shows the skeleton, and the page is never blank or wh
       setTimeout(() => {
         real = open(...args);
         for (const [k, v] of Object.entries(handlers)) (real as unknown as Record<string, unknown>)[k] = v;
-      }, 600);
+      }, delay);
       return new Proxy({} as IDBOpenDBRequest, {
         get: (_, k) => (real ? Reflect.get(real, k) : handlers[k]),
         set: (_, k, v) => {
@@ -59,7 +64,7 @@ test('a slow database read shows the skeleton, and the page is never blank or wh
         },
       });
     }) as typeof indexedDB.open;
-  });
+  }, OPEN_DELAY_MS);
 
   const backgrounds: string[] = [];
   const sample = async () =>

@@ -1,11 +1,7 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useState } from 'react';
 import { Skeleton, ToastHost } from '../components';
 import { findActiveSession } from '../db/sessions';
-import { CompareScreen } from '../screens/Compare';
-import { HistoryScreen } from '../screens/History';
 import { LiveScreen } from '../screens/Live';
-import { SessionDetailScreen } from '../screens/SessionDetail';
-import { SettingsScreen } from '../screens/Settings';
 import { StartScreen } from '../screens/Start';
 import { WelcomeScreen } from '../screens/Welcome';
 import { useAppStore } from '../state/store';
@@ -14,6 +10,14 @@ import { useBootStore } from './boot';
 import { decideLanding } from './landing';
 import { navigate, useRoute, type Route } from './router';
 import { useApplyTheme } from './theme';
+
+// Secondary screens load on demand to keep the initial bundle small; the SW still precaches the chunks.
+const HistoryScreen = lazy(() => import('../screens/History').then((m) => ({ default: m.HistoryScreen })));
+const CompareScreen = lazy(() => import('../screens/Compare').then((m) => ({ default: m.CompareScreen })));
+const SessionDetailScreen = lazy(() =>
+  import('../screens/SessionDetail').then((m) => ({ default: m.SessionDetailScreen })),
+);
+const SettingsScreen = lazy(() => import('../screens/Settings').then((m) => ({ default: m.SettingsScreen })));
 
 export { WelcomeScreen } from '../screens/Welcome';
 
@@ -86,7 +90,11 @@ function Shell() {
   if (failed && !ready) return <BootFailed />;
   // Before 300 ms the page is just the Dusk background (set on <html>), never white.
   if (!ready) return slow ? <Skeleton /> : null;
-  return <Screen route={route} />;
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <Screen route={route} />
+    </Suspense>
+  );
 }
 
 export function App() {
