@@ -9,7 +9,7 @@ describe('App routing', () => {
   it.each([
     ['', 'Start'],
     ['#/live', 'Live'],
-    ['#/history', 'History'],
+    ['#/history', 'Sessions'],
     ['#/settings', 'Settings'],
     ['#/session/abc', 'Session'],
     ['#/compare?ids=a,b', 'Compare'],
@@ -23,6 +23,6 @@ describe('App routing', () => {
   it('switches screen when the route changes', () => {
     render(<App />);
     act(() => navigate('#/history'));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('History');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Sessions');
   });
 });

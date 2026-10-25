@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { extent } from 'd3-array';
 import { Chart, type ChartTarget } from './Chart';
-import { TimeAxis, formatClock } from './timeAxis';
+import { TimeAxis, formatClock, formatOffset } from './timeAxis';
 import { useWidth } from './useWidth';
 
 export interface TrendSeries {
@@ -19,6 +19,8 @@ export interface TrendChartProps {
   yUnit: string;
   yTicks?: number[];
   summary: string;
+  /** Axis and tooltips read as time since the domain start ("0 h, 1 h, …") instead of clock times. */
+  relative?: boolean;
   onSelect?: (refId: string) => void;
   /** Spread onto the SVG to wire up useZoomPan. */
   svgProps?: React.SVGProps<SVGSVGElement>;
@@ -38,7 +40,7 @@ const PAD = { top: 10, right: 10, bottom: 34, left: 30 };
 
 const round1 = (v: number) => String(Math.round(v * 10) / 10);
 
-export function TrendChart({ series, domain, yUnit, yTicks, summary, onSelect, svgProps }: TrendChartProps) {
+export function TrendChart({ series, domain, yUnit, yTicks, summary, relative, onSelect, svgProps }: TrendChartProps) {
   const [ref, width] = useWidth();
   const plotH = HEIGHT - PAD.top - PAD.bottom;
 
@@ -62,10 +64,10 @@ export function TrendChart({ series, domain, yUnit, yTicks, summary, onSelect, s
         .map(({ p, key }) => ({
           id: key,
           x: x(p.t),
-          describe: () => ({ title: formatClock(p.t), lines: [`${round1(p.v)} ${yUnit}`] }),
+          describe: () => ({ title: relative ? `${formatOffset(p.t - domain[0])} in` : formatClock(p.t), lines: [`${round1(p.v)} ${yUnit}`] }),
           selectId: p.refId,
         })),
-    [series, domain, x, yUnit],
+    [series, domain, x, yUnit, relative],
   );
 
   return (
@@ -80,7 +82,7 @@ export function TrendChart({ series, domain, yUnit, yTicks, summary, onSelect, s
               </text>
             </g>
           ))}
-          <TimeAxis scale={x} domain={domain} y={PAD.top + plotH} width={width} />
+          <TimeAxis scale={x} domain={domain} y={PAD.top + plotH} width={width} relative={relative} />
           {series.map((s) =>
             s.line && s.line.length > 1 ? (
               <path

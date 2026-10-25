@@ -76,3 +76,10 @@ export function TimeAxis({ scale, domain, y, width, relative }: TimeAxisProps) {
     </g>
   );
 }
+
+/** "0s", "6m", "1 h 06 m": time since the start, for relative (compare) labels. */
+export const formatOffset = (ms: number) => {
+  const m = Math.max(0, Math.round(ms / 60_000));
+  if (m < 60) return m === 0 ? `${Math.round(Math.max(0, ms) / 1000)}s` : `${m}m`;
+  return `${Math.floor(m / 60)} h ${pad(m % 60)} m`;
+};
