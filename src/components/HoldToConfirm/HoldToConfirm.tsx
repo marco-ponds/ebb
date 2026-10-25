@@ -84,13 +84,21 @@ export function HoldToConfirm({ label, durationMs = 1500, onConfirm }: HoldToCon
       onContextMenu={(e) => e.preventDefault()}
     >
       {reducedMotion ? null : (
-        <svg className={styles.ring} aria-hidden="true" focusable="false" data-fill>
+        <svg
+          className={styles.ring}
+          aria-hidden="true"
+          focusable="false"
+          data-fill
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
           <rect
             x="2"
             y="2"
-            width="calc(100% - 4px)"
-            height="calc(100% - 4px)"
+            width="96"
+            height="96"
             rx="18"
+            vectorEffect="non-scaling-stroke"
             pathLength="1"
             strokeDasharray="1"
             strokeDashoffset={holding ? 0 : 1}

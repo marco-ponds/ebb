@@ -123,6 +123,15 @@ describe('HoldToConfirm', () => {
     expect(btn()).toHaveTextContent('Hold');
   });
 
+  it('draws the ring with plain numeric geometry (no calc())', () => {
+    render(<HoldToConfirm label="Hold" onConfirm={() => {}} />);
+    const rect = btn().querySelector('[data-fill] rect')!;
+    for (const attr of ['x', 'y', 'width', 'height']) {
+      expect(rect.getAttribute(attr)).not.toMatch(/calc|%/);
+      expect(Number.isFinite(Number(rect.getAttribute(attr)))).toBe(true);
+    }
+  });
+
   it('under reduced motion: no fill, text counts down 1.5 > 1.0 > 0.5 s', () => {
     stubMotion(true);
     render(<HoldToConfirm label="Hold to end" onConfirm={() => {}} />);

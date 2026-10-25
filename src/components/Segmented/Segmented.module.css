@@ -8,7 +8,7 @@
 
 .option {
   flex: 1;
-  min-height: 44px;
+  min-height: var(--touch-min);
   padding: 0 var(--space-3);
   border: 0;
   border-radius: calc(var(--radius-button) - var(--space-1));

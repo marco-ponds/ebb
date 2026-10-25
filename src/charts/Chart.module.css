@@ -33,7 +33,8 @@
 }
 
 .edit {
-  min-height: 32px;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
   margin-top: var(--space-1);
   padding: 0;
   border: 0;

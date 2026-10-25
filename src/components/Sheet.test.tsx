@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -72,5 +72,31 @@ describe('Sheet', () => {
     render(<Sheet open onClose={() => {}} title="T">x</Sheet>);
     expect(screen.getByRole('dialog')).toHaveAttribute('data-motion', 'fade');
     vi.unstubAllGlobals();
+  });
+
+  it('puts initial focus on the first content control, not Close', async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByText('Open'));
+    expect(screen.getByText('First')).toHaveFocus();
+  });
+
+  it('still closes on Esc and traps Tab after the focused element unmounts', async () => {
+    function Swap() {
+      const [step, setStep] = useState(0);
+      const [open, setOpen] = useState(true);
+      return (
+        <Sheet open={open} onClose={() => setOpen(false)} title="Event">
+          {step === 0 ? <button key="save" onClick={() => setStep(1)}>Save</button> : <button key="done">Done</button>}
+        </Sheet>
+      );
+    }
+    render(<Swap />);
+    await userEvent.click(screen.getByText('Save')); // the focused button unmounts
+    expect(document.body).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
+    act(() => (document.activeElement as HTMLElement).blur());
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

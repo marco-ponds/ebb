@@ -178,7 +178,7 @@ describe('Timeline panning', () => {
     });
     const full: [number, number] = [base, base + 240 * MIN];
     const onDomainChange = vi.fn();
-    const { container } = render(
+    const { container, rerender } = render(
       <Timeline {...common} items={[]} fullDomain={full} domain={[base + 60 * MIN, base + 120 * MIN]} onDomainChange={onDomainChange} />,
     );
     const svg = container.querySelector('svg')!;
@@ -190,6 +190,10 @@ describe('Timeline panning', () => {
         expect(onDomainChange).not.toHaveBeenCalled();
         fireEvent.pointerUp(svg, { pointerId: 1, clientX: 140 });
         expect(onDomainChange).toHaveBeenCalledTimes(1);
+        expect(container.querySelector('svg > g')!.getAttribute('transform')).toBeNull();
+        const committed = onDomainChange.mock.calls[0][0] as [number, number];
+        rerender(<Timeline {...common} items={[]} fullDomain={full} domain={committed} onDomainChange={onDomainChange} />);
+        expect(container.querySelector('svg > g')!.getAttribute('transform')).toBeNull();
         vi.restoreAllMocks();
         resolve();
       }),

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { Chart, type ChartTarget } from './Chart';
 import { TimeAxis, formatClock, formatLength } from './timeAxis';
@@ -77,7 +77,10 @@ export function Timeline({
   const zoom = useZoomPan({
     fullDomain: fullDomain ?? domain,
     domain,
-    onChange: (d) => onDomainChange?.(d),
+    onChange: (d) => {
+      gRef.current?.removeAttribute('transform'); // the committed domain re-lays out the bars
+      onDomainChange?.(d);
+    },
     // During the gesture only the data layer's transform changes; React commits the domain at the end.
     onPreview: (d) => {
       const g = gRef.current;
@@ -87,6 +90,10 @@ export function Timeline({
       g.setAttribute('transform', `translate(${shift} 0) scale(${k} 1)`);
     },
   });
+
+  useLayoutEffect(() => {
+    gRef.current?.removeAttribute('transform');
+  }, [domain]);
 
   const visibleItems = useMemo(() => items.filter((i) => i.endAt >= domain[0] && i.startAt <= domain[1]), [items, domain]);
 
