@@ -131,14 +131,18 @@ async function attempt<T>(op: () => Promise<T>, ctx: WriteContext): Promise<T> {
   ctx.storageError = null;
   ctx.completed = false;
   running = ctx;
+  const startedAt = performance.now();
   try {
-    return await db.transaction('rw', TABLES.map((t) => db[t]), async () => {
+    const result = await db.transaction('rw', TABLES.map((t) => db[t]), async () => {
       const result = await op();
       ctx.result = result;
       ctx.completed = true;
       if (ctx.storageError) throw ctx.storageError; // roll the whole op back
       return result;
     });
+    // One measure per committed write: the e2e performance spec reads these for the commit p95 (< 50 ms).
+    performance.measure('ebb:db-commit', { start: startedAt, end: performance.now() });
+    return result;
   } finally {
     running = null;
   }
