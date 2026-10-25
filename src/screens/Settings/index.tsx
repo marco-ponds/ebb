@@ -1,4 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
+import { InstallHint } from '../../app/InstallHint';
+import { useInstallHint } from '../../app/installPrompt';
 import { useUpdateReady } from '../../app/swUpdate';
 import { goBack } from '../../app/router';
 import { isWakeLockSupported } from '../../app/wakeLock';
@@ -21,6 +23,23 @@ const LOOK: Array<{ value: Theme; label: string }> = [
   { value: 'day', label: 'Day' },
   { value: 'system', label: 'Match phone' },
 ];
+
+function InstallSection() {
+  const { kind } = useInstallHint();
+  if (kind === 'none') return null;
+  return (
+    <section aria-labelledby="settings-install">
+      <h2 id="settings-install" className={styles.sectionTitle}>
+        Install Ebb
+      </h2>
+      <Card>
+        <div className={styles.stack}>
+          <InstallHint textClassName={styles.installText} />
+        </div>
+      </Card>
+    </section>
+  );
+}
 
 export function SettingsScreen() {
   const settings = useSettings();
@@ -103,6 +122,8 @@ export function SettingsScreen() {
       </Card>
 
       <DataSection />
+
+      <InstallSection />
 
       <footer className={styles.footer}>
         <SafetyLine />

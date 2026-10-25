@@ -1,3 +1,4 @@
+import { newId } from '../lib/uuid';
 import { InvariantError, OverlapError } from './errors';
 import { runWrite, write } from './queue';
 import { getRow, rowsOf } from './reads';
@@ -30,7 +31,7 @@ async function findOverlapping(sessionId: string, startAt: number, endAt: number
 }
 
 export function startContraction(sessionId: string, now: number = Date.now()): Promise<Contraction> {
-  const id = crypto.randomUUID(); // chosen once: a retried write must commit the row the overlay showed
+  const id = newId(); // chosen once: a retried write must commit the row the overlay showed
   return runWrite(async () => {
     const session = await getRow('sessions', sessionId);
     if (!session || session.endedAt !== null) throw new InvariantError('Contractions can only start in the active session');
@@ -119,7 +120,7 @@ export function addMissedContraction(
   sessionId: string,
   input: { startAt: number; durationMs: number; intensity?: number | null; note?: string | null },
 ): Promise<Contraction> {
-  const id = crypto.randomUUID();
+  const id = newId();
   return runWrite(async () => {
     checkIntensity(input.intensity);
     if (!(input.durationMs > 0)) throw new RangeError('A contraction needs a duration above zero');

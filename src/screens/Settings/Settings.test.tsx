@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToastStore } from '../../components';
@@ -8,6 +8,7 @@ import { endSession, startSession } from '../../db/sessions';
 import { getSettings, updateSettings } from '../../db/settings';
 import { getDb } from '../../db/schema';
 import { dropDb, freshDb } from '../../db/testDb';
+import { __resetInstallPromptForTests } from '../../app/installPrompt';
 import * as share from '../../lib/share';
 import { initStore, teardownStore, useAppStore } from '../../state/store';
 import { SettingsScreen } from '.';
@@ -17,6 +18,13 @@ vi.mock('../../app/swUpdate', () => ({ useUpdateReady: () => swState.ready }));
 
 const SAFETY =
   "This app records contractions. It doesn't give medical advice — if you're worried, contact your midwife or maternity unit.";
+// A stubbed navigator no longer has the real getters, which the install hint reads.
+const PHONE = { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/120', platform: 'Linux armv8l', maxTouchPoints: 5 };
+const fakeNavigator = (extra: Record<string, unknown>) =>
+  Object.create(
+    navigator,
+    Object.fromEntries(Object.entries({ ...PHONE, ...extra }).map(([k, value]) => [k, { value, configurable: true }])),
+  );
 const NOT_BACKUP = "This file isn't an Ebb backup";
 
 const boot = async () => {
@@ -243,15 +251,60 @@ describe('scale, look and toggles', () => {
 
   it('explains when the browser cannot keep the screen on', async () => {
     const help = "This browser can't keep the screen on. You can raise the auto-lock time in your phone's display settings.";
-    vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { wakeLock: undefined }));
+    vi.stubGlobal('navigator', fakeNavigator({ wakeLock: undefined }));
     await boot();
     expect(screen.getByText(help)).toBeInTheDocument();
   });
 
   it('hides the wake-lock help when it is supported', async () => {
-    vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { wakeLock: { request: vi.fn() } }));
+    vi.stubGlobal('navigator', fakeNavigator({ wakeLock: { request: vi.fn() } }));
     await boot();
     expect(screen.queryByText(/can't keep the screen on/)).toBeNull();
+  });
+});
+
+describe('install', () => {
+  const secure = (on: boolean) => Object.defineProperty(window, 'isSecureContext', { value: on, configurable: true });
+  beforeEach(() => {
+    __resetInstallPromptForTests();
+    secure(true);
+    window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => secure(true));
+
+  it('says how to install from the browser menu when no prompt is available', async () => {
+    await boot();
+    const section = screen.getByRole('region', { name: 'Install Ebb' });
+    expect(within(section).getByText('To install, open your browser menu and choose Install app or Add to Home screen.')).toBeInTheDocument();
+  });
+
+  it('asks for a secure link over plain http', async () => {
+    secure(false);
+    await boot();
+    expect(screen.getByText('To install Ebb, open it from a secure (https) link.')).toBeInTheDocument();
+  });
+
+  it('offers an Install button that uses the deferred prompt', async () => {
+    await boot();
+    const e = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: vi.fn(() => Promise.resolve()),
+      userChoice: Promise.resolve({ outcome: 'accepted' }),
+    });
+    act(() => void window.dispatchEvent(e));
+    await userEvent.click(within(screen.getByRole('region', { name: 'Install Ebb' })).getByRole('button', { name: 'Install' }));
+    expect(e.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the iOS steps on iPhone Safari', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1');
+    await boot();
+    expect(screen.getByText('Tap Share, then Add to Home Screen.')).toBeInTheDocument();
+  });
+
+  it('shows no install row once installed', async () => {
+    window.matchMedia = ((q: string) => ({ matches: q === '(display-mode: standalone)', media: q, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    await boot();
+    expect(screen.queryByRole('region', { name: 'Install Ebb' })).toBeNull();
   });
 });
 

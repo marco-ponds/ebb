@@ -1,3 +1,4 @@
+import { newId } from '../../lib/uuid';
 import { useState } from 'react';
 import { Button, Segmented, Sheet } from '../../components';
 import type { Threshold } from '../../db/types';
@@ -59,7 +60,7 @@ function Form({ initial, onSave, onDelete }: { initial: Threshold | null; onSave
 
   const save = () => {
     if (invalid) return;
-    const base = { id: initial?.id ?? crypto.randomUUID(), enabled: initial?.enabled ?? true, label: d.label.trim() || null, preset: false as const };
+    const base = { id: initial?.id ?? newId(), enabled: initial?.enabled ?? true, label: d.label.trim() || null, preset: false as const };
     const input = inputOf(d);
     onSave(input.kind === 'n-in-m' ? { ...base, ...input } : { ...base, ...input });
   };

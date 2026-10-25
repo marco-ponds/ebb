@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { StorageNotice } from '../../app/StorageNotice';
 import { Wordmark } from '../../app/Wordmark';
-import { useInstallHint } from '../../app/installPrompt';
+import { InstallHint } from '../../app/InstallHint';
 import { navigate } from '../../app/router';
 import { Button, SafetyLine } from '../../components';
 import { updateSettings } from '../../db/settings';
 import styles from './Welcome.module.css';
 
 export function WelcomeScreen() {
-  const hint = useInstallHint();
   const [busy, setBusy] = useState(false);
 
   const getStarted = async () => {
@@ -35,12 +34,7 @@ export function WelcomeScreen() {
 
       <div className={styles.bottom}>
         <StorageNotice />
-        {hint.kind === 'ios' ? <p className={styles.hint}>Tap Share, then Add to Home Screen.</p> : null}
-        {hint.kind === 'prompt' ? (
-          <Button variant="secondary" onClick={() => void hint.prompt?.()}>
-            Install
-          </Button>
-        ) : null}
+        <InstallHint textClassName={styles.hint} />
         <Button variant="primary" className={styles.cta} onClick={() => void getStarted()}>
           Get started
         </Button>

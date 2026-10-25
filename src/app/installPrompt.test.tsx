@@ -23,16 +23,38 @@ function installEvent() {
   return e;
 }
 
+function secure(on: boolean) {
+  Object.defineProperty(window, 'isSecureContext', { value: on, configurable: true });
+}
+
 describe('useInstallHint', () => {
   beforeEach(() => {
     __resetInstallPromptForTests();
     mockStandalone(false);
+    secure(true);
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 14) Chrome/120');
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('is none on a browser with no install route', () => {
-    expect(renderHook(() => useInstallHint()).result.current).toEqual({ kind: 'none' });
+  it('is manual on a secure, non-iOS browser with no deferred prompt', () => {
+    expect(renderHook(() => useInstallHint()).result.current).toEqual({ kind: 'manual' });
+  });
+
+  it('is insecure on plain http, where no prompt or service worker can exist', () => {
+    secure(false);
+    expect(renderHook(() => useInstallHint()).result.current).toEqual({ kind: 'insecure' });
+  });
+
+  it('is insecure rather than ios on an iPhone over plain http', () => {
+    secure(false);
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE_UA);
+    expect(renderHook(() => useInstallHint()).result.current.kind).toBe('insecure');
+  });
+
+  it('is none when standalone, even when insecure', () => {
+    secure(false);
+    mockStandalone(true);
+    expect(renderHook(() => useInstallHint()).result.current.kind).toBe('none');
   });
 
   it('is ios on iPhone Safari outside standalone', () => {
@@ -63,7 +85,7 @@ describe('useInstallHint', () => {
       await result.current.prompt?.();
     });
     expect(e.prompt).toHaveBeenCalledTimes(1);
-    expect(result.current.kind).toBe('none');
+    expect(result.current.kind).toBe('manual');
   });
 
   it('keeps an event that fired before the hook mounted', () => {

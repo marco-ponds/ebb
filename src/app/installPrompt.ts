@@ -5,7 +5,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: string }>;
 }
 
-export type InstallHint = { kind: 'none' | 'ios' | 'prompt'; prompt?: () => Promise<void> };
+export type InstallHint = { kind: 'none' | 'ios' | 'prompt' | 'manual' | 'insecure'; prompt?: () => Promise<void> };
 
 let deferred: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
@@ -37,6 +37,10 @@ function isStandalone(): boolean {
   return nav.standalone === true || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
 }
 
+function isSecure(): boolean {
+  return window.isSecureContext !== false;
+}
+
 function isIos(): boolean {
   const nav = navigator;
   return /iPad|iPhone|iPod/.test(nav.userAgent) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
@@ -44,16 +48,18 @@ function isIos(): boolean {
 
 function compute(): InstallHint {
   if (isStandalone()) return { kind: 'none' };
+  // Plain http (a LAN address, say) has no service worker and no install prompt: say so, rather than show nothing.
+  if (!isSecure()) return { kind: 'insecure' };
   if (deferred) return { kind: 'prompt', prompt };
   if (isIos()) return { kind: 'ios' };
-  return { kind: 'none' };
+  return { kind: 'manual' };
 }
 
 // useSyncExternalStore needs a stable snapshot: recompute only when the inputs change.
 let cached: InstallHint = compute();
 let cachedKey = '';
 function snapshot(): InstallHint {
-  const key = `${isStandalone()}|${deferred !== null}|${isIos()}`;
+  const key = `${isStandalone()}|${isSecure()}|${deferred !== null}|${isIos()}`;
   if (key !== cachedKey) {
     cachedKey = key;
     cached = compute();

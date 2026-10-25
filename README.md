@@ -28,6 +28,23 @@ npm run typecheck
 App icons are generated once from `public/icons/icon.svg` and committed:
 `npx pwa-assets-generator --config scripts/pwa-assets.config.ts`.
 
+## Deploy
+
+Ebb is served by GitHub Pages at <https://marco-ponds.github.io/ebb/>.
+
+`.github/workflows/pages.yml` runs on every push to `main` (and by hand from the Actions tab): it runs lint,
+typecheck and the unit tests, builds with `EBB_BASE=/ebb/` (the site lives under `/ebb/`; locally the base stays
+`/`), and publishes `dist/`. Playwright is not run in CI.
+
+To install from that link:
+
+- iPhone or iPad: open it in Safari, tap Share, then Add to Home Screen.
+- Android: open it in Chrome, then use the menu and choose Install app (or Add to Home screen).
+
+Ebb is served from the shared marco-ponds.github.io origin, so other Pages sites on that origin share its browser storage: keep them static and free of third-party scripts, or move Ebb to its own domain.
+
+Ebb must be opened over https (or localhost) to install and work offline; plain http on a LAN address won't do.
+
 ## Audit
 
 `npm run audit:lighthouse` builds the app, serves it with `npm run preview` and runs Lighthouse CI

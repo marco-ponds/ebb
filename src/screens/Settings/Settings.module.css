@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap-card);
-  min-height: 100vh;
+  min-height: var(--screen-h);
   padding: var(--space-5) var(--gutter) var(--space-8);
 }
 
@@ -231,6 +231,14 @@
 
 .sheetText {
   margin: 0 0 var(--space-4);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.installText {
+  margin: 0;
   font-size: var(--fs-body);
   font-weight: 700;
   line-height: 1.45;
