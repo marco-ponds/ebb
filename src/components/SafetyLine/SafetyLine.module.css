@@ -1,0 +1,7 @@
+.line {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--text-muted);
+}

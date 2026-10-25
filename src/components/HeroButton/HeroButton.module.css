@@ -1,0 +1,91 @@
+.hero {
+  --hero-colour: var(--lavender);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  isolation: isolate;
+  transition: opacity var(--dur-crossfade) var(--ease-out);
+}
+
+.hero[data-tone='peach'] {
+  --hero-colour: var(--peach);
+}
+
+.hero[data-shape='rounded'] {
+  flex: 1;
+  width: 100%;
+  min-height: 240px;
+  border-radius: var(--radius-hero);
+}
+
+.hero[data-shape='circle'] {
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+}
+
+.hero[data-dimmed='true'] {
+  opacity: 0.55;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: var(--hero-colour);
+  transition: background-color var(--dur-crossfade) var(--ease-out);
+}
+
+/* Two soft rings in the button's own colour: 10 % at 10 px, 5 % at 22 px. */
+.halo {
+  position: absolute;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--hero-colour);
+  transition: background-color var(--dur-crossfade) var(--ease-out);
+}
+
+.halo[data-halo='inner'] {
+  inset: -10px;
+  opacity: 0.1;
+}
+
+.halo[data-halo='outer'] {
+  inset: -22px;
+  opacity: 0.05;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--hero-colour);
+  opacity: 0.35;
+  animation: breathe var(--glow-duration) ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: scale(1.04);
+    opacity: 0.9;
+  }
+}

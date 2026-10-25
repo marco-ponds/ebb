@@ -1,0 +1,41 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.input {
+  min-width: 0;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 2px solid var(--hairline);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color-scheme: dark;
+}
+
+.pair .input {
+  width: 84px;
+}
+
+.unit {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-muted);
+}

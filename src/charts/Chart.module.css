@@ -1,0 +1,70 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.region {
+  border-radius: var(--space-2);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.tooltip {
+  min-width: 120px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-icon);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.tooltipTitle {
+  font-weight: 900;
+}
+
+.tooltipLine {
+  color: var(--text-muted);
+}
+
+.edit {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  margin-top: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lavender);
+  font: inherit;
+  font-weight: 900;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tooltipSlot {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+  transform: translateX(-50%);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.hit {
+  cursor: pointer;
+}

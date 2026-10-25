@@ -1,0 +1,27 @@
+.card {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.value {
+  overflow: hidden;
+  font-size: var(--fs-stat);
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.caption {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-faint);
+}

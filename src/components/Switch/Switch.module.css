@@ -1,0 +1,65 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-3) 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-body);
+  font-weight: 800;
+}
+
+.description {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.track {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 32px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--hairline);
+  transition: background-color var(--dur-crossfade) var(--ease-out);
+}
+
+.thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--dur-crossfade) var(--ease-out), background-color var(--dur-crossfade) var(--ease-out);
+}
+
+.row[aria-checked='true'][data-tone='mint'] .track {
+  background: var(--mint);
+}
+
+.row[aria-checked='true'][data-tone='butter'] .track {
+  background: var(--butter);
+}
+
+.row[aria-checked='true'] .thumb {
+  transform: translateX(20px);
+  background: var(--ink);
+}

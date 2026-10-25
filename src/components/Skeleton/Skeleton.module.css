@@ -1,0 +1,21 @@
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card);
+  min-height: 100vh;
+  padding: var(--gutter);
+  background: var(--bg);
+}
+
+.card {
+  height: 96px;
+  border: 2px solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+
+.button {
+  flex: 1;
+  min-height: 240px;
+  border-radius: var(--radius-hero);
+  background: var(--surface-2);
+}
