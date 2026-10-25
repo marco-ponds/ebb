@@ -2,7 +2,7 @@ import { Plus, Share, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button, SummarySheet, showToast } from '../../components';
 import { discardContraction } from '../../db/contractions';
-import { undoLast } from '../../db/undo';
+import { undoWithFeedback } from '../../lib/undoFeedback';
 import { summaryText } from '../../domain/summary';
 import { useUndoAvailable } from '../../state/hooks';
 import { DIDNT_SAVE } from './rating';
@@ -19,11 +19,7 @@ export function ActionRow(ctx: LiveSlotContext) {
 
   const undo = () => {
     if (!undoAvailable) return;
-    undoLast()
-      .then((kind) => {
-        if (kind) showToast({ message: 'Undone', durationMs: 3000 });
-      })
-      .catch(() => showToast({ message: DIDNT_SAVE }));
+    void undoWithFeedback();
   };
 
   return (

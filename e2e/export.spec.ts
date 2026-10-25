@@ -13,14 +13,14 @@ const events = [
   makeEvent({ sessionId: session.id, type: 'note', at: at(25, 22, 45), note: 'had a bath, then "tea"' }),
 ];
 
-async function open(page: Page): Promise<string[]> {
+async function open(page: Page, extraEvents: typeof events = []): Promise<string[]> {
   const requested: string[] = [];
   page.on('request', (r) => requested.push(new URL(r.url()).pathname));
   await page.clock.install({ time: NOW });
   await page.goto('/');
   await waitForDb(page);
   await onboard(page);
-  await seedDb(page, { sessions: [session], contractions, events });
+  await seedDb(page, { sessions: [session], contractions, events: [...events, ...extraEvents] });
   await page.goto(`/#/session/${session.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   return requested;
@@ -61,4 +61,12 @@ test('PDF report is generated on device: %PDF, over 10 kB, and the PDF code load
   expect(bytes.subarray(0, 4).toString('latin1')).toBe('%PDF');
   expect(bytes.length).toBeGreaterThan(10_000);
   expect(requested.filter((p) => pdfCode.test(p)).length).toBeGreaterThan(0);
+});
+
+test('PDF report still generates with very long event notes (wrapped, not cut off)', async ({ page }) => {
+  const long = makeEvent({ sessionId: session.id, type: 'note', at: at(25, 23, 10), note: 'A very long note about how the evening went. '.repeat(20) });
+  await open(page, [long]);
+  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), main(page).getByRole('button', { name: 'PDF report' }).click()]);
+  const bytes = await readFile((await download.path())!);
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('%PDF');
 });

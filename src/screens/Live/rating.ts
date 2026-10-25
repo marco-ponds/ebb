@@ -22,5 +22,4 @@ const subscribe = (l: () => void) => {
 
 export const useRatingFor = (): string | null => useSyncExternalStore(subscribe, () => openFor, () => null);
 
-/** Quiet feedback for a write that was refused. */
-export const DIDNT_SAVE = "That didn't save — try again.";
+export { DIDNT_SAVE } from '../../lib/undoFeedback';

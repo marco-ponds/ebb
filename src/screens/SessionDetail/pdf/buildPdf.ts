@@ -203,24 +203,40 @@ export async function buildPdf(input: PdfInput): Promise<Blob> {
       y += 5;
     };
     header();
+    const LINE_H = 4;
+    /** Wraps to the width that is left on the page from `x`, so no note is cut off or runs off the edge. */
+    const wrap = (value: string, x: number): string[] => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      return doc.splitTextToSize(value, PAGE.w - M - x) as string[];
+    };
     for (const row of buildLog(contractions, events).reverse()) {
-      if (y + 6 > PAGE.h - M - FOOTER_H) {
+      const noteX = row.kind === 'event' ? COLS.lasting : COLS.note;
+      const noteText =
+        row.kind === 'event'
+          ? `${eventTitle(row.e)}${row.e.note ? `: ${row.e.note}` : ''}`
+          : [row.flag, row.c.note].filter(Boolean).join(' · ');
+      const noteLines = noteText ? wrap(noteText, noteX) : [];
+      const rowH = Math.max(1, noteLines.length) * LINE_H + 2;
+      if (y + rowH > PAGE.h - M - FOOTER_H) {
         doc.addPage();
         y = M;
         header();
       }
       const when = `${formatDateShort(row.at)} ${formatClock(row.at)}`;
       text(when, COLS.start, 9, false, INK);
-      if (row.kind === 'event') {
-        text(`${eventTitle(row.e)}${row.e.note ? `: ${row.e.note}` : ''}`, COLS.lasting, 9, false, MUTED);
-      } else {
+      if (row.kind === 'contraction') {
         text(row.duration === null ? '…' : `${Math.round(row.duration / 1000)}s`, COLS.lasting, 9, false, INK);
         text(row.apart === null ? '—' : formatDuration(row.apart), COLS.apart, 9, false, INK);
         text(formatIntensity(row.c.intensity, scale), COLS.strength, 9, false, INK);
-        const note = [row.flag, row.c.note].filter(Boolean).join(' · ');
-        if (note) text(note.slice(0, 40), COLS.note, 9, false, MUTED);
       }
-      y += 6;
+      if (noteLines.length) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...MUTED);
+        doc.text(noteLines, noteX, y, { lineHeightFactor: LINE_H / (9 * 0.3528) });
+      }
+      y += rowH;
     }
   } finally {
     off.dispose();
