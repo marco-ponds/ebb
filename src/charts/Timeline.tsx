@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { Chart, type ChartTarget } from './Chart';
-import { TimeAxis, formatClock, formatLength } from './timeAxis';
+import { TimeAxis, formatClock, formatLength, formatOffset } from './timeAxis';
 import { useWidth } from './useWidth';
 import { useZoomPan } from './useZoomPan';
 import styles from './Chart.module.css';
@@ -29,6 +29,10 @@ export interface TimelineProps {
   variant: 'mini' | 'full' | 'compare';
   series?: 'primary' | 'secondary' | 'tertiary';
   summary: string;
+  /** Label times as offsets from the domain start ("6m in") instead of clock times. Default: true for compare. */
+  relative?: boolean;
+  /** Draw the hour axis under the bars (compare only). Default true; stack several and show it on the last. */
+  showAxis?: boolean;
   onSelect?: (id: string) => void;
   /** With onDomainChange, pinch / drag / double-tap adjust the visible range. */
   fullDomain?: [number, number];
@@ -61,13 +65,16 @@ export function Timeline({
   variant,
   series = 'primary',
   summary,
+  relative: relativeProp,
+  showAxis = true,
   onSelect,
   fullDomain,
   onDomainChange,
 }: TimelineProps) {
   const [ref, width] = useWidth();
   const gRef = useRef<SVGGElement>(null);
-  const layout = LAYOUT[variant];
+  const relative = relativeProp ?? variant === 'compare';
+  const layout = { ...LAYOUT[variant], axis: showAxis ? LAYOUT[variant].axis : 0 };
   const height = layout.markers + layout.bars + layout.axis + 4;
   const baseY = layout.markers + layout.bars;
   const style = SERIES_STYLE[series];
@@ -134,7 +141,9 @@ export function Timeline({
         id: it.id,
         x: x(it.startAt) + Math.max(MIN_BAR_PX, x(it.endAt) - x(it.startAt)) / 2,
         describe: () => ({
-          title: `${formatClock(it.startAt)}–${formatClock(it.endAt)}`,
+          title: relative
+            ? `${formatOffset(it.startAt - domain[0])} in`
+            : `${formatClock(it.startAt)}–${formatClock(it.endAt)}`,
           lines: [
             `Lasting ${formatLength(it.endAt - it.startAt)}`,
             it.intensity === null ? 'Strength not rated' : `Strength ${it.intensity}/10`,
@@ -151,11 +160,11 @@ export function Timeline({
         target: {
           id: `marker:${m.id}`,
           x: x(m.at),
-          describe: () => ({ title: formatClock(m.at), lines: [m.label] }),
+          describe: () => ({ title: relative ? `${formatOffset(m.at - domain[0])} in` : formatClock(m.at), lines: [m.label] }),
         } satisfies ChartTarget,
       }));
     return [...itemTargets, ...markerTargets].sort((a, b) => a.t - b.t).map((e) => e.target);
-  }, [visibleItems, markers, domain, x]);
+  }, [visibleItems, markers, domain, x, relative]);
 
   const markerR = variant === 'full' ? 10 : 5;
   const legend =
@@ -253,7 +262,7 @@ export function Timeline({
             ) : null}
           </g>
           {layout.axis > 0 ? (
-            <TimeAxis scale={x} domain={domain} y={baseY + 2} width={width} relative={variant === 'compare'} />
+            <TimeAxis scale={x} domain={domain} y={baseY + 2} width={width} relative={relative} />
           ) : null}
         </>
       )}

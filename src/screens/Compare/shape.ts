@@ -45,6 +45,8 @@ export interface CompareSeries {
   items: TimelineItem[];
   /** Rolling average of 4 intervals, in minutes, at ms since the session start. */
   line: { t: number; v: number }[];
+  /** Every interval in minutes at ms since the session start (the dots behind the line). */
+  points: { t: number; v: number; refId: string }[];
   metrics: CompareMetrics;
 }
 
@@ -93,6 +95,7 @@ export function shapeCompare(inputs: CompareInput[], now: number, scale: Intensi
       lengthMs: end - base,
       items: points.map((p) => ({ id: p.id, startAt: p.startAt - base, endAt: p.endAt - base, intensity: p.intensity })),
       line,
+      points: withInterval.map((r) => ({ t: r.c.startAt - base, v: (r.interval as number) / MIN, refId: r.c.id })),
       metrics: {
         length: formatSessionLength(end - base),
         contractions: String(summary.count),

@@ -82,7 +82,7 @@ export function CompareScreen({ ids }: { ids: string[] }) {
       <Card className={styles.card}>
         <h2 className={styles.cardTitle}>Timelines</h2>
         <div className={styles.timelines} data-hours={hours}>
-          {model.series.map((s) => (
+          {model.series.map((s, i) => (
             <section key={s.id} className={styles.timeline} data-series={s.key} aria-label={s.name}>
               <h3 className={styles.timelineName} data-series={s.key}>
                 {s.name}
@@ -93,6 +93,7 @@ export function CompareScreen({ ids }: { ids: string[] }) {
                 items={s.items}
                 markers={[]}
                 gaps={[]}
+                showAxis={i === model.series.length - 1}
                 domain={model.domain}
                 summary={`${s.name}: ${s.metrics.contractions} contractions over ${s.metrics.length}`}
               />
@@ -108,8 +109,9 @@ export function CompareScreen({ ids }: { ids: string[] }) {
         </div>
         <div className={styles.trend}>
           <TrendChart
-            series={model.series.map((s) => ({ id: s.id, points: [], line: s.line, style: s.style, tone: s.tone }))}
+            series={model.series.map((s) => ({ id: s.id, points: s.points, line: s.line, style: s.style, tone: s.tone }))}
             domain={model.domain}
+            relative
             yUnit="min"
             summary={`Time apart in minutes, rolling average of 4, for ${model.series.map((s) => s.name).join(', ')}`}
           />

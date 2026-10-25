@@ -106,7 +106,7 @@
 .timelines {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .timeline {
@@ -133,11 +133,6 @@
 .timelineName[data-series='tertiary'],
 .colHead[data-series='tertiary'] {
   color: var(--text-muted);
-}
-
-/* The trend chart's x axis is in absolute clock time; here x is time since each start, so hide its labels. */
-.trend :global([data-axis]) {
-  display: none;
 }
 
 .table {

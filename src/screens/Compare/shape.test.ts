@@ -74,6 +74,12 @@ describe('shapeCompare', () => {
     expect(line[0]).toEqual({ t: 4 * 6 * MIN, v: 6 });
   });
 
+  it('keeps every interval as a point in minutes, relative to the start', () => {
+    const pts = model.series[1]!.points;
+    expect(pts).toHaveLength(19);
+    expect(pts[0]).toEqual({ t: 6 * MIN, v: 6, refId: 'b-1' });
+  });
+
   it('fills the table rows per session with the settings scale', () => {
     expect(model.series.map((s) => s.heading)).toEqual(['Tuesday', 'Tonight']);
     expect(model.series[0]!.metrics).toEqual({

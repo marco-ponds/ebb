@@ -48,9 +48,9 @@ test.describe('two sessions', () => {
   test('stacks timelines on a shared hour axis sized to the longest session', async ({ page }) => {
     const timelines = page.getByRole('region');
     await expect(timelines).toHaveCount(2);
-    for (const i of [0, 1]) {
-      await expect(timelines.nth(i).locator('[data-axis]')).toHaveText(['0 h', '1 h', '2 h', '3 h', '4 h']);
-    }
+    // One shared hour axis, under the last timeline, sized to the longest session.
+    await expect(timelines.nth(0).locator('[data-axis]')).toHaveCount(0);
+    await expect(timelines.nth(1).locator('[data-axis]')).toHaveText(['0 h', '1 h', '2 h', '3 h', '4 h']);
     await expect(timelines.nth(0).locator('rect[data-bar-id]')).toHaveCount(22);
     await expect(timelines.nth(1).locator('rect[data-bar-id]')).toHaveCount(31);
     // Primary is a solid lavender fill; secondary an outline with a dashed stroke.
@@ -68,6 +68,23 @@ test.describe('two sessions', () => {
     const dashed = page.locator(`path[data-line="${tuesday.id}"]`);
     await expect(dashed).toHaveAttribute('stroke', 'var(--sky)');
     await expect(dashed).toHaveAttribute('stroke-dasharray', '6 4');
+  });
+
+  test('trend chart has an hour axis and relative-time tooltips', async ({ page }) => {
+    const trend = page.getByRole('img', { name: /^Time apart in minutes/ });
+    await expect(trend.locator('[data-axis]')).toHaveText(['0 h', '1 h', '2 h', '3 h', '4 h']);
+    await expect(trend.locator('circle[data-point]')).toHaveCount(21 + 30);
+    await trend.locator('circle[data-point]').first().dispatchEvent('pointerover');
+    const tip = page.getByRole('tooltip');
+    await expect(tip).toContainText('in');
+    await expect(tip).not.toContainText(/\d\d:\d\d/);
+  });
+
+  test('timeline tooltips use time into the session', async ({ page }) => {
+    await page.getByRole('region', { name: 'Tonight' }).locator('rect[data-bar-id]').nth(1).dispatchEvent('pointerover');
+    const tip = page.getByRole('tooltip');
+    await expect(tip).toContainText('6m in');
+    await expect(tip).not.toContainText(/\d\d:\d\d/);
   });
 
   test('tabulates the metrics, one column per session', async ({ page }) => {
