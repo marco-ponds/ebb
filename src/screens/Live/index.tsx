@@ -5,7 +5,7 @@ import { useNow } from '../../lib/useNow';
 import { useAppStore } from '../../state/store';
 import { useContractions, useEvents, useSettings, useStorageStatus } from '../../state/hooks';
 import type { Contraction, EbbEvent, Session } from '../../db/types';
-import { countedContractions, computeLiveMetrics } from '../../domain/metrics';
+import { countedContractions, computeLiveMetrics, ENOUGH } from '../../domain/metrics';
 import { EndSessionSheet } from './EndSessionSheet';
 import { AveragesCard, PatternLine, StatCards } from './Insights';
 import { LiveHeader } from './LiveHeader';
@@ -31,8 +31,6 @@ export type { LiveSlotContext } from './slots';
 const NONE_C: Contraction[] = [];
 const NONE_E: EbbEvent[] = [];
 const METRICS_EVERY_MS = 15_000;
-/** Fewer counted contractions than this and the averages say "Not enough yet" and the pattern line hides. */
-const ENOUGH = 4;
 
 export function LiveScreen() {
   const ready = useAppStore((s) => s.ready);

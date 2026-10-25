@@ -4,7 +4,7 @@ import { Button, Skeleton, SummarySheet, showToast } from '../../components';
 import type { Contraction, EbbEvent, Session } from '../../db/types';
 import { deleteContraction } from '../../db/contractions';
 import { deleteEvent } from '../../db/events';
-import { countedContractions, computeSessionMetrics } from '../../domain/metrics';
+import { computeSessionMetrics, patternAt } from '../../domain/metrics';
 import { summaryText } from '../../domain/summary';
 import { displayName } from '../../domain/naming';
 import { useContractions, useEvents, useSession, useSettings } from '../../state/hooks';
@@ -18,7 +18,7 @@ import { EditEventSheet } from './EditEventSheet';
 import { exportCsv, exportPdf } from './exporting';
 import { ExportSheet } from './ExportSheet';
 import { LogTable } from './LogTable';
-import { ENOUGH, buildLog, detailStats, timingById, type LogRow } from './model';
+import { buildLog, detailStats, timingById, type LogRow } from './model';
 import { Notes } from './Notes';
 import { PatternCard } from './PatternCard';
 import { SummaryCards } from './SummaryCards';
@@ -82,18 +82,13 @@ function Detail({ session, contractions, events }: { session: Session; contracti
 
   const stats = useMemo(() => detailStats(contractions, end, active, session.startedAt), [contractions, end, active, session.startedAt]);
   // An ended session is described at its last contraction, so "the last hour" means the hour before it stopped.
-  const patternTo = useMemo(
-    () => (active ? end : contractions.reduce((max, c) => Math.max(max, c.endAt ?? c.startAt), session.startedAt)),
-    [active, end, contractions, session.startedAt],
-  );
+  const patternTo = useMemo(() => patternAt(session, contractions, end), [session, contractions, end]);
+  const patternFrom = active ? end - HOUR : session.startedAt;
   const pattern = useMemo(
-    () => computeSessionMetrics(contractions, events, { from: active ? end - HOUR : session.startedAt, to: patternTo }),
-    [contractions, events, active, end, patternTo, session.startedAt],
+    () => computeSessionMetrics(contractions, events, { from: patternFrom, to: patternTo }),
+    [contractions, events, patternFrom, patternTo],
   );
-  const patternEnough = useMemo(
-    () => countedContractions(contractions).filter((p) => p.startAt >= (active ? end - HOUR : session.startedAt)).length >= ENOUGH,
-    [contractions, active, end, session.startedAt],
-  );
+  const patternEnough = stats.enough;
   const model = useMemo(() => buildChartModel(session, contractions, events, end), [session, contractions, events, end]);
   const timing = useMemo(() => timingById(contractions), [contractions]);
   const log = useMemo(() => buildLog(contractions, events), [contractions, events]);

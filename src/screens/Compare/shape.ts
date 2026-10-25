@@ -1,6 +1,6 @@
 import type { Contraction, IntensityScale, Session } from '../../db/types';
 import { formatDateShort, formatDuration, formatIntensity, formatSessionLength } from '../../domain/format';
-import { countedContractions, deriveRows, regularity, rollingMean, summarizeWindow } from '../../domain/metrics';
+import { countedContractions, deriveRows, patternAt, regularity, rollingMean, summarizeEnough } from '../../domain/metrics';
 import { displayName } from '../../domain/naming';
 import type { TimelineItem } from '../../charts';
 
@@ -83,7 +83,7 @@ export function shapeCompare(inputs: CompareInput[], now: number, scale: Intensi
       const v = averaged[i];
       return v === null || v === undefined ? [] : [{ t: r.c.startAt - base, v }];
     });
-    const summary = summarizeWindow(contractions, base, end);
+    const summary = summarizeEnough(contractions, base, end);
     const name = displayName(session, now);
     return {
       id: session.id,
@@ -102,7 +102,7 @@ export function shapeCompare(inputs: CompareInput[], now: number, scale: Intensi
         apart: summary.avgInterval === null ? '—' : formatDuration(summary.avgInterval),
         lasting: summary.avgDuration === null ? '—' : formatDuration(summary.avgDuration),
         strength: formatIntensity(summary.avgIntensity === null ? null : Math.round(summary.avgIntensity), scale),
-        pattern: regularity(points, end)?.label ?? '—',
+        pattern: (summary.enough ? regularity(points, patternAt(session, contractions, end))?.label : undefined) ?? '—',
       },
     };
   });

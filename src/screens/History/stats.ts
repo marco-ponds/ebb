@@ -1,5 +1,5 @@
 import type { Contraction, Session } from '../../db/types';
-import { summarizeWindow } from '../../domain/metrics';
+import { summarizeEnough } from '../../domain/metrics';
 import { displayName } from '../../domain/naming';
 import { formatDateShort, formatDuration, formatSessionLength, formatTimeRange } from '../../domain/format';
 
@@ -16,7 +16,7 @@ export interface CardStats {
 /** Whole-session figures for a History card: from startedAt to endedAt, or to now while active. */
 export function cardStats(session: Session, contractions: Contraction[], now: number): CardStats {
   const end = session.endedAt ?? now;
-  const summary = summarizeWindow(contractions, session.startedAt, end);
+  const summary = summarizeEnough(contractions, session.startedAt, end);
   return {
     title: displayName(session, now),
     active: session.endedAt === null,
