@@ -84,10 +84,13 @@ describe('App routing and landing guard', () => {
   it('leaves other routes alone', async () => {
     await boot();
     window.history.replaceState(null, '', '#/history');
-    render(<App />);
+    const { container } = render(<App />);
     expect(window.location.hash).toBe('#/history');
+    // History is a lazy chunk: the skeleton stands in until it has loaded.
+    await waitFor(() => expect(container.querySelector('[data-skeleton="button"]')).toBeNull());
     act(() => navigate('#/settings'));
     expect(window.location.hash).toBe('#/settings');
+    await waitFor(() => expect(container.querySelector('[data-skeleton="button"]')).toBeNull());
   });
 
   it('follows a session that starts while open: #/ moves on to Live', async () => {
