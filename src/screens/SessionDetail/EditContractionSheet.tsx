@@ -3,8 +3,8 @@ import { Button, Sheet, TimeField, showToast } from '../../components';
 import { deleteContraction, updateContraction, type ContractionPatch } from '../../db/contractions';
 import { OverlapError } from '../../db/errors';
 import type { Contraction, IntensityScale } from '../../db/types';
-import { undoLast } from '../../db/undo';
 import { formatClock } from '../../domain/format';
+import { undoWithFeedback } from '../../lib/undoFeedback';
 import { findOverlap } from '../../domain/metrics';
 import { timingById, timingLines } from './model';
 import { StrengthField } from './StrengthField';
@@ -14,10 +14,10 @@ export const END_BEFORE_START = 'The end needs to be after the start';
 export const overlapMessage = (other: { startAt: number }) => `Overlaps the one at ${formatClock(other.startAt)}`;
 
 export function savedToast() {
-  showToast({ message: 'Saved · ', actionLabel: 'Undo', onAction: () => void undoLast() });
+  showToast({ message: 'Saved · ', actionLabel: 'Undo', onAction: () => void undoWithFeedback() });
 }
 export function deletedToast() {
-  showToast({ message: 'Deleted · ', actionLabel: 'Undo', onAction: () => void undoLast() });
+  showToast({ message: 'Deleted · ', actionLabel: 'Undo', onAction: () => void undoWithFeedback() });
 }
 
 interface Props {

@@ -96,7 +96,7 @@ describe('buildBackup / exportBackup', () => {
     if (!parsed.ok) throw new Error('should parse');
     expect(parsed.counts).toEqual({ sessions: 1, contractions: 1, events: 1 });
     const result = await restoreBackup(parsed.backup, 'replace');
-    expect(result).toEqual({ added: 3, skipped: 0 });
+    expect(result).toEqual({ added: 3, skipped: 0, snapshotSaved: false });
     const after = await dump();
     expect(after.sessions).toEqual(before.sessions);
     expect(after.contractions).toEqual(before.contractions);
@@ -148,7 +148,7 @@ describe('restoreBackup', () => {
     };
     const result = await restoreBackup(incoming, 'merge');
     // session (same updatedAt: skipped), event (skipped), newer contraction (added), extra session and contraction (added)
-    expect(result).toEqual({ added: 3, skipped: 2 });
+    expect(result).toEqual({ added: 3, skipped: 2, snapshotSaved: false });
     expect((await getDb().contractions.get(c.id))?.note).toBe('from backup');
     expect(await getDb().sessions.get('other-session')).toBeDefined();
     expect(s.id).toBeDefined();
@@ -171,7 +171,7 @@ describe('restoreBackup', () => {
     const active: Session = { ...base.sessions[0], endedAt: null };
     const open: Contraction = { ...base.contractions[0], id: 'open', endAt: null, startAt: NOON + 30 * MIN };
     const result = await restoreBackup({ ...base, sessions: [active], contractions: [base.contractions[0], open] }, 'merge');
-    expect(result).toEqual({ added: 3, skipped: 1 });
+    expect(result).toEqual({ added: 3, skipped: 1, snapshotSaved: false });
     expect((await getDb().sessions.get(active.id))?.endedAt).toBe(NOON + 30 * MIN); // the dropped open contraction's start is the latest stamp
     expect(await getDb().contractions.get('open')).toBeUndefined();
   });
@@ -195,7 +195,7 @@ describe('restoreBackup', () => {
     const backup = { ...(await buildBackup(NOON)), sessions: [], contractions: [], events: [], settings: { ...DEFAULT_SETTINGS, theme: 'day' as const, onboardedAt: 1 } };
     const oldSessions = await getDb().sessions.count();
     const result = await restoreBackup(backup, 'replace');
-    expect(result).toEqual({ added: 0, skipped: 0 });
+    expect(result).toEqual({ added: 0, skipped: 0, snapshotSaved: true });
     const keys = [...(caches.store.get('ebb-backups')?.keys() ?? [])];
     expect(keys).toHaveLength(1);
     expect(keys[0]).toMatch(/^\/backups\/.+-before-replace\.json$/);
@@ -220,7 +220,7 @@ describe('invalid backups change nothing', () => {
 describe('snapshotToBackupsCache / deleteAllData', () => {
   it('is a no-op when Cache Storage is missing', async () => {
     vi.stubGlobal('caches', undefined);
-    await expect(snapshotToBackupsCache('x')).resolves.toBeUndefined();
+    await expect(snapshotToBackupsCache('x')).resolves.toBe(false);
   });
 
   it('deleteAllData clears all five stores and deletes only the ebb-backups cache', async () => {

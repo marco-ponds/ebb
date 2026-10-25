@@ -6,15 +6,14 @@ import {
   allStarts,
   countedContractions,
   deriveRows,
+  ENOUGH,
   rollingMean,
-  summarizeWindow,
+  summarizeEnough,
 } from '../../domain/metrics';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const MIN_SPAN = 10 * MIN;
-/** Fewer counted contractions than this and averages show — and trend lines are omitted. */
-export const ENOUGH = 4;
 
 export type RangeKey = 'hour' | '3h' | 'session';
 export const RANGE_OPTIONS: { value: RangeKey; label: string }[] = [
@@ -91,21 +90,22 @@ export interface DetailStats {
   avgDuration: number | null;
   avgIntensity: number | null;
   unrated: number;
+  /** At least ENOUGH counted contractions in the window. */
+  enough: boolean;
 }
 
 /** Last hour while the session is active, the whole session once ended. Below 4 counted contractions the averages are null. */
 export function detailStats(cs: Contraction[], end: number, active: boolean, startedAt: number): DetailStats {
   const from = active ? end - HOUR : startedAt;
-  const w = summarizeWindow(cs, from, end);
-  const counted = countedContractions(cs).filter((p) => p.startAt >= from && p.startAt <= end).length;
-  const enough = counted >= ENOUGH;
+  const w = summarizeEnough(cs, from, end);
   return {
     total: allStarts(cs).length,
     windowCount: w.count,
-    avgInterval: enough ? w.avgInterval : null,
-    avgDuration: enough ? w.avgDuration : null,
-    avgIntensity: enough ? w.avgIntensity : null,
+    avgInterval: w.avgInterval,
+    avgDuration: w.avgDuration,
+    avgIntensity: w.avgIntensity,
     unrated: w.unrated,
+    enough: w.enough,
   };
 }
 

@@ -8,7 +8,7 @@ import {
   stopContraction,
   updateContraction,
 } from './contractions';
-import { OverlapError } from './errors';
+import { InvariantError, OverlapError } from './errors';
 import { addEvent, deleteEvent, updateEvent } from './events';
 import { getDb } from './schema';
 import { endSession, markThresholdMet, renameSession, setSessionNotes, startSession } from './sessions';
@@ -106,6 +106,15 @@ describe('contractions', () => {
     await discardContraction(c.id);
     expect(await getDb().contractions.get(c.id)).toBeUndefined();
     expect(await undoLast()).toBeNull();
+  });
+
+  it('discard refuses a contraction that has already stopped or is gone', async () => {
+    const s = await activeSession();
+    const c = await startContraction(s.id, T0 + 1);
+    await stopContraction(c.id, T0 + MIN);
+    await expect(discardContraction(c.id)).rejects.toBeInstanceOf(InvariantError);
+    expect((await getDb().contractions.get(c.id))?.endAt).toBe(T0 + MIN);
+    await expect(discardContraction('nope')).rejects.toBeInstanceOf(InvariantError);
   });
 
   it('rates 1-10 or null and rejects other values', async () => {

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { useWakeLock } from '../../app/wakeLock';
+import { useWakeLockState } from '../../app/wakeLock';
 import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useNow } from '../../lib/useNow';
 import { useAppStore } from '../../state/store';
 import { useContractions, useEvents, useSettings, useStorageStatus } from '../../state/hooks';
 import type { Contraction, EbbEvent, Session } from '../../db/types';
-import { countedContractions, computeLiveMetrics } from '../../domain/metrics';
+import { countedContractions, computeLiveMetrics, ENOUGH } from '../../domain/metrics';
 import { EndSessionSheet } from './EndSessionSheet';
 import { AveragesCard, PatternLine, StatCards } from './Insights';
 import { LiveHeader } from './LiveHeader';
@@ -31,8 +31,6 @@ export type { LiveSlotContext } from './slots';
 const NONE_C: Contraction[] = [];
 const NONE_E: EbbEvent[] = [];
 const METRICS_EVERY_MS = 15_000;
-/** Fewer counted contractions than this and the averages say "Not enough yet" and the pattern line hides. */
-const ENOUGH = 4;
 
 export function LiveScreen() {
   const ready = useAppStore((s) => s.ready);
@@ -56,7 +54,7 @@ function LiveSession({ session }: { session: Session }) {
   const contractions = useContractions(session.id) ?? NONE_C;
   const events = useEvents(session.id) ?? NONE_E;
   const active = useAppStore((s) => s.activeContraction);
-  const wakeLock = useWakeLock(true, settings.keepAwake);
+  const wakeLock = useWakeLockState();
   const { toggle, announcement, problem, clearProblem } = useContractionToggle(session.id, active, settings.haptics);
   const banner = useThresholdBanner(session, contractions, settings.thresholds);
 

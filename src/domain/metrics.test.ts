@@ -16,6 +16,9 @@ import {
   regularity,
   rollingAverages,
   rollingMean,
+  patternAt,
+  summarizeEnough,
+  ENOUGH,
   summarizeWindow,
   tenMinuteBuckets,
   type CPoint,
@@ -293,7 +296,7 @@ describe('summarizeWindow', () => {
   });
   it('gives nulls for an empty window and for a single interval', () => {
     expect(summarizeWindow([], T0, T0 + HOUR)).toEqual({
-      count: 0, avgInterval: null, avgDuration: null, avgIntensity: null, unrated: 0,
+      count: 0, counted: 0, avgInterval: null, avgDuration: null, avgIntensity: null, unrated: 0,
     });
     const s = summarizeWindow([c('a', T0), c('b', T0 + 4 * MIN)], T0, T0 + HOUR);
     expect(s.avgInterval).toBeNull();
@@ -305,6 +308,40 @@ describe('summarizeWindow', () => {
     expect(summarizeWindow(cs, T0, T0 + HOUR).avgInterval).toBe(4 * MIN);
     const reviewed = cs.map((x) => (x.id === 's' ? { ...x, reviewed: true } : x));
     expect(summarizeWindow(reviewed, T0, T0 + HOUR).avgInterval).toBeCloseTo((8 * MIN) / 3);
+  });
+});
+
+describe('summarizeWindow vs rollingAverages', () => {
+  it('uses the interval that crosses the window edge, like rollingAverages', () => {
+    // starts at -75, -50, -41, -20, -10 min: the -50 contraction's interval (25 min) reaches back out of the window.
+    const now = T0 + 2 * HOUR;
+    const cs = [75, 50, 41, 20, 10].map((m, i) => c(`x${i}`, now - m * MIN));
+    const ra = rollingAverages(countedContractions(cs), now, 60);
+    const sw = summarizeWindow(cs, now - HOUR, now);
+    expect(ra.interval).toBe(((25 + 9 + 21 + 10) / 4) * MIN);
+    expect(sw.avgInterval).toBe(ra.interval);
+  });
+  it('treats the window as [from, to)', () => {
+    const cs = [c('a', T0), c('b', T0 + 4 * MIN), c('c', T0 + 8 * MIN)];
+    expect(summarizeWindow(cs, T0, T0 + 8 * MIN).count).toBe(2);
+    expect(summarizeWindow(cs, T0 + 4 * MIN, T0 + 9 * MIN).count).toBe(2);
+  });
+});
+
+describe('summarizeEnough and patternAt', () => {
+  it('hides averages below ENOUGH counted contractions', () => {
+    const three = [c('a', T0), c('b', T0 + 4 * MIN), c('c', T0 + 8 * MIN)];
+    const s = summarizeEnough(three, T0, T0 + HOUR);
+    expect(s.enough).toBe(false);
+    expect([s.count, s.avgInterval, s.avgDuration, s.avgIntensity]).toEqual([3, null, null, null]);
+    expect(ENOUGH).toBe(4);
+    expect(summarizeEnough([...three, c('d', T0 + 12 * MIN)], T0, T0 + HOUR).avgInterval).toBe(4 * MIN);
+  });
+  it('describes an ended session at its last contraction and an active one now', () => {
+    const cs = [c('a', T0, 60 * SEC), c('b', T0 + 4 * MIN, 60 * SEC), c('gone', T0 + 9 * MIN, 60 * SEC, { deletedAt: 1 })];
+    expect(patternAt({ startedAt: T0 - MIN, endedAt: T0 + 5 * HOUR }, cs, T0 + 9 * HOUR)).toBe(T0 + 5 * MIN);
+    expect(patternAt({ startedAt: T0 - MIN, endedAt: null }, cs, T0 + 9 * HOUR)).toBe(T0 + 9 * HOUR);
+    expect(patternAt({ startedAt: T0, endedAt: T0 + MIN }, [], T0 + HOUR)).toBe(T0);
   });
 });
 

@@ -5,7 +5,8 @@ const HEADER = 'type,start,end,duration_s,interval_s,intensity,note';
 
 function field(value: string | number | null): string {
   if (value === null) return '';
-  const text = String(value);
+  // Free text that starts like a formula would run in Excel/Sheets: a leading ' keeps it text (OWASP CSV injection).
+  const text = typeof value === 'string' && /^[=+\-@\t\r]/.test(value) ? `'${value}` : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

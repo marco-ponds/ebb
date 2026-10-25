@@ -49,7 +49,7 @@ describe('replaying parked writes re-checks the cross-tab invariants', () => {
     expect(snap.conflicts[0].reason).toMatch(/already in progress/);
     expect(snap.pendingCount).toBe(0);
     expect(snap.overlay).toEqual([]); // the UI now reflects the database
-    expect(snap.status).toBe('failing');
+    expect(snap.status).toBe('ok'); // nothing is pending, so no stale "couldn't save" notice
     b.close();
   });
 

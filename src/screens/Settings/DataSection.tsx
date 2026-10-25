@@ -93,9 +93,9 @@ function Restore() {
     if (!preview || working) return;
     setWorking(true);
     try {
-      const { added, skipped } = await restoreBackup(preview.backup, mode);
+      const { added, skipped, snapshotSaved } = await restoreBackup(preview.backup, mode);
       setMessage(`Added ${added}, skipped ${skipped}`);
-      setReplaced(mode === 'replace');
+      setReplaced(mode === 'replace' && snapshotSaved);
     } catch (e) {
       setMessage(e instanceof InvariantError ? BUSY_HINT : "Couldn't restore just now. Nothing was changed.");
     } finally {

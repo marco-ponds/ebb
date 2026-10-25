@@ -338,7 +338,28 @@ describe('restore', () => {
     expect(screen.queryByText('A copy of your current data was saved first')).toBeNull();
   });
 
+  it('Replace without Cache Storage does not claim a copy was saved', async () => {
+    vi.stubGlobal('caches', undefined);
+    const old = await startSession(1_600_000_000_000);
+    await endSession(old.id, 1_600_000_100_000);
+    await boot();
+    await choose(backupFile());
+    await userEvent.click(await screen.findByRole('button', { name: 'Replace' }));
+    expect(await screen.findByText('Added 2, skipped 0')).toBeInTheDocument();
+    expect(screen.queryByText('A copy of your current data was saved first')).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
   it('Replace swaps the data and confirms that a copy was saved first', async () => {
+    const store = new Map<string, Map<string, string>>();
+    vi.stubGlobal('caches', {
+      open: async (name: string) => {
+        const m = store.get(name) ?? new Map<string, string>();
+        store.set(name, m);
+        return { put: async (k: string, r: Response) => void m.set(k, await r.text()) };
+      },
+      delete: async () => true,
+    });
     const old = await startSession(1_600_000_000_000);
     await endSession(old.id, 1_600_000_100_000);
     await boot();

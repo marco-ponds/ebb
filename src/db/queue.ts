@@ -219,7 +219,7 @@ async function flush(): Promise<boolean> {
           ...pending.slice(1).map((p) => ({ reason: 'Planned after a change that could not be saved', writes: p.writes })),
         ];
         pending = [];
-        failing = true;
+        failing = false; // nothing is waiting to be saved; the conflict is reported on its own
         emit();
       }
       return false;

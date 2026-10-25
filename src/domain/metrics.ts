@@ -184,28 +184,58 @@ export function progression(points: CPoint[], now: number): Progression {
 
 export interface WindowSummary {
   count: number;
+  /** Contractions that count towards the averages (finished, reviewed or long enough). */
+  counted: number;
   avgInterval: number | null;
   avgDuration: number | null;
   avgIntensity: number | null;
   unrated: number;
 }
 
-/** Summary for starts in [from, to]. Averages skip unreviewed very short and time-changed rows. */
+/**
+ * Summary for starts in [from, to). Averages skip unreviewed very short and time-changed rows. Rows are derived over
+ * every counted contraction first, so the first in-window interval reaches back to the previous contraction, exactly
+ * as rollingAverages does.
+ */
 export function summarizeWindow(cs: Contraction[], from: number, to: number): WindowSummary {
-  const inRange = (t: number) => t >= from && t <= to;
+  const inRange = (t: number) => t >= from && t < to;
   const count = allStarts(cs).filter(inRange).length;
-  const points = countedContractions(cs).filter((p) => inRange(p.startAt));
-  const intervals = deriveRows(points)
-    .map((r) => r.interval)
-    .filter((v): v is number => v !== null);
-  const rated = points.filter((p) => p.intensity !== null).map((p) => p.intensity as number);
+  const rows = deriveRows(countedContractions(cs)).filter((r) => inRange(r.c.startAt));
+  const intervals = rows.map((r) => r.interval).filter((v): v is number => v !== null);
+  const rated = rows.filter((r) => r.c.intensity !== null).map((r) => r.c.intensity as number);
   return {
     count,
+    counted: rows.length,
     avgInterval: intervals.length >= 2 ? (mean(intervals) as number) : null,
-    avgDuration: points.length ? (mean(points, (p) => p.endAt - p.startAt) as number) : null,
+    avgDuration: rows.length ? (mean(rows, (r) => r.duration) as number) : null,
     avgIntensity: rated.length ? (mean(rated) as number) : null,
-    unrated: points.length - rated.length,
+    unrated: rows.length - rated.length,
   };
+}
+
+/** Fewer counted contractions than this and averages show "—" (or "Not enough yet") and the pattern hides. */
+export const ENOUGH = 4;
+
+export interface GatedSummary extends WindowSummary {
+  enough: boolean;
+}
+
+/** summarizeWindow with the averages nulled below ENOUGH counted contractions. */
+export function summarizeEnough(cs: Contraction[], from: number, to: number): GatedSummary {
+  const w = summarizeWindow(cs, from, to);
+  const enough = w.counted >= ENOUGH;
+  return enough ? { ...w, enough } : { ...w, enough, avgInterval: null, avgDuration: null, avgIntensity: null };
+}
+
+/**
+ * The moment a session's pattern is described at: now while active; once ended, its last contraction's end,
+ * so "the last hour" means the hour before it stopped.
+ */
+export function patternAt(session: { startedAt: number; endedAt: number | null }, cs: Contraction[], now: number): number {
+  if (session.endedAt === null) return now;
+  let last = session.startedAt;
+  for (const c of cs) if (c.deletedAt == null) last = Math.max(last, c.endAt ?? c.startAt);
+  return last;
 }
 
 /** A finished, non-deleted contraction whose time range overlaps the candidate (touching is fine). */

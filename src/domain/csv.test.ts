@@ -51,4 +51,14 @@ describe('toCsv', () => {
     expect(rows[1].startsWith('contraction')).toBe(true);
     expect(rows[2].startsWith('bleeding')).toBe(true);
   });
+  it.each(['=1+1', '+SUM(A1)', '-2+3', '@cmd', '\tx', '\rx'])('neutralises a note that starts like a formula: %j', (note) => {
+    const row = toCsv([c('a', at(23, 0), 60 * SEC, { note })], []).split('\r\n')[1];
+    expect(row).toContain(`'${note}`);
+    expect(row.split(',').slice(-1)[0].replace(/^"/, '')).toMatch(/^'/);
+  });
+  it('quotes after prefixing, and leaves numbers, timestamps and ordinary notes alone', () => {
+    const rows = toCsv([c('a', at(23, 0), 60 * SEC, { note: '=A,B', intensity: 7 }), c('b', at(23, 10), 60 * SEC, { note: 'a=b' })], []).split('\r\n');
+    expect(rows[1]).toBe('contraction,2026-10-25T23:00:00+00:00,2026-10-25T23:01:00+00:00,60,,7,"\'=A,B"');
+    expect(rows[2]).toBe('contraction,2026-10-25T23:10:00+00:00,2026-10-25T23:11:00+00:00,60,600,,a=b');
+  });
 });
