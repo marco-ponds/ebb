@@ -1,0 +1,339 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: var(--space-5) var(--gutter);
+  overflow-x: clip;
+}
+
+/* Every slot owns its bottom margin, so an empty slot leaves no gap. */
+.slot {
+  margin-bottom: var(--gap-card);
+}
+
+.slot:empty {
+  display: none;
+}
+
+.slot[data-slot='hero'] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 240px;
+}
+
+/* ---- header ---- */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  transition: opacity var(--dur-crossfade) var(--ease-out);
+}
+
+.header[data-dimmed='true'] {
+  opacity: 0.55;
+}
+
+.title {
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 1.2;
+}
+
+.name a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sub {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.headerEnd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- banner ---- */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--tint-butter);
+  color: var(--butter);
+}
+
+.bannerIcon {
+  flex: none;
+}
+
+.bannerText {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+}
+
+.bannerClose {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-icon);
+  background: transparent;
+  color: var(--butter);
+  cursor: pointer;
+}
+
+/* ---- quiet notice cards ---- */
+.notice {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.notice + .notice {
+  margin-top: var(--space-2);
+}
+
+.noticeText {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.noticeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ---- insights ---- */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-card);
+}
+
+.averages {
+  padding: var(--space-4) var(--space-5);
+}
+
+.averageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.averageRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.averageRow dt {
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.averageRow dd {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color: var(--text);
+}
+
+.pattern {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.dot[data-tone='mint'] {
+  background: var(--mint);
+}
+
+.dot[data-tone='butter'] {
+  background: var(--butter);
+}
+
+/* ---- hero ---- */
+.hero {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.heroLabel {
+  font-size: var(--fs-button);
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.heroTimer {
+  font-size: var(--fs-hero);
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.heroCaption,
+.heroEmpty {
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color: var(--ink);
+  opacity: 0.8;
+}
+
+.heroEmpty {
+  margin-top: var(--space-2);
+  font-size: var(--fs-title);
+}
+
+.breathe {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+/* ---- mini timeline ---- */
+.timelineCaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.timelineChart {
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+/* ---- menu sheet ---- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- large text (200 % zoom narrows the viewport) ---- */
+@media (max-width: 360px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .averageRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ---- landscape phone: hero left, the rest right ---- */
+@media (orientation: landscape) and (max-height: 500px) {
+  .screen {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: min-content;
+    column-gap: var(--space-5);
+    align-content: start;
+  }
+
+  .slot {
+    grid-column: 2;
+  }
+
+  .slot[data-slot='hero'] {
+    grid-column: 1;
+    grid-row: 1 / span 20;
+    align-self: stretch;
+    margin-bottom: 0;
+  }
+
+  .slot[data-slot='caption'] {
+    grid-column: 1;
+    grid-row: 21;
+  }
+}
