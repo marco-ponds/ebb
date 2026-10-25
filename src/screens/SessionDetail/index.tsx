@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { goBack } from '../../app/router';
-import { Button, Skeleton, SummarySheet } from '../../components';
+import { Button, Skeleton, SummarySheet, showToast } from '../../components';
 import type { Contraction, EbbEvent, Session } from '../../db/types';
 import { deleteContraction } from '../../db/contractions';
 import { deleteEvent } from '../../db/events';
@@ -18,7 +18,7 @@ import { EditEventSheet } from './EditEventSheet';
 import { exportCsv, exportPdf } from './exporting';
 import { ExportSheet } from './ExportSheet';
 import { LogTable } from './LogTable';
-import { ENOUGH, buildLog, detailStats, type LogRow } from './model';
+import { ENOUGH, buildLog, detailStats, timingById, type LogRow } from './model';
 import { Notes } from './Notes';
 import { PatternCard } from './PatternCard';
 import { SummaryCards } from './SummaryCards';
@@ -95,6 +95,7 @@ function Detail({ session, contractions, events }: { session: Session; contracti
     [contractions, active, end, session.startedAt],
   );
   const model = useMemo(() => buildChartModel(session, contractions, events, end), [session, contractions, events, end]);
+  const timing = useMemo(() => timingById(contractions), [contractions]);
   const log = useMemo(() => buildLog(contractions, events), [contractions, events]);
 
   const summary = useMemo(
@@ -131,7 +132,9 @@ function Detail({ session, contractions, events }: { session: Session; contracti
 
   const editRow = (row: LogRow) => setTarget({ kind: row.kind, id: row.id });
   const deleteRow = (row: LogRow) => {
-    void (row.kind === 'event' ? deleteEvent(row.id) : deleteContraction(row.id)).then(deletedToast);
+    (row.kind === 'event' ? deleteEvent(row.id) : deleteContraction(row.id)).then(deletedToast, () =>
+      showToast({ message: "Couldn't delete that. Please try again." }),
+    );
   };
 
   return (
@@ -144,6 +147,7 @@ function Detail({ session, contractions, events }: { session: Session; contracti
         startedAt={session.startedAt}
         end={end}
         active={active}
+        timing={timing}
         onEdit={(cid) => setTarget({ kind: 'contraction', id: cid })}
       />
       <LogTable rows={log} scale={settings.intensityScale} onEdit={editRow} onDelete={deleteRow} />

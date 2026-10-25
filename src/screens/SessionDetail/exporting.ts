@@ -5,8 +5,14 @@ import { saveFile } from '../../lib/share';
 import { fileDate } from './model';
 
 export async function exportCsv(session: Session, contractions: Contraction[], events: EbbEvent[]): Promise<void> {
-  const csv = toCsv(contractions, events);
-  await saveFile(new Blob([csv], { type: 'text/csv' }), `ebb-session-${fileDate(session.startedAt)}.csv`);
+  try {
+    const csv = toCsv(contractions, events);
+    await saveFile(new Blob([csv], { type: 'text/csv' }), `ebb-session-${fileDate(session.startedAt)}.csv`);
+  } catch (e) {
+    // Closing the iOS share sheet is not a failure.
+    if (e instanceof DOMException && e.name === 'AbortError') return;
+    showToast({ message: "Couldn't save the CSV. Please try again." });
+  }
 }
 
 export interface PdfInput {

@@ -82,6 +82,8 @@ test.describe('summary, pattern and charts', () => {
     const tip = page.getByRole('tooltip');
     await expect(tip).toContainText(/\d\d:\d\d–\d\d:\d\d/);
     await expect(tip).toContainText('Lasting 48s');
+    await expect(tip).toContainText('Interval 6m 20s');
+    await expect(tip).toContainText('Rest 5m 32s');
     await tip.getByRole('button', { name: 'Edit' }).click();
     await expect(page.getByRole('dialog', { name: 'Edit contraction' })).toBeVisible();
   });

@@ -6,6 +6,7 @@ import type { Contraction, IntensityScale } from '../../db/types';
 import { undoLast } from '../../db/undo';
 import { formatClock } from '../../domain/format';
 import { findOverlap } from '../../domain/metrics';
+import { timingById, timingLines } from './model';
 import { StrengthField } from './StrengthField';
 import styles from './SessionDetail.module.css';
 
@@ -36,6 +37,7 @@ function Form({ contraction: c, all, scale, onClose }: Omit<Props, 'contraction'
 
   const badRange = end !== null && end <= start;
   const hint = badRange ? END_BEFORE_START : error;
+  const [intervalLine, restLine] = timingLines(timingById(all).get(c.id));
 
   const save = async () => {
     if (badRange || busy) return;
@@ -98,6 +100,9 @@ function Form({ contraction: c, all, scale, onClose }: Omit<Props, 'contraction'
           }}
         />
       ) : null}
+      <p className={styles.hint} data-testid="timing">
+        {intervalLine} · {restLine}
+      </p>
       <StrengthField scale={scale} value={intensity} onChange={setIntensity} />
       <div className={styles.fieldGroup}>
         <label className={styles.fieldLabel} htmlFor="contraction-note">

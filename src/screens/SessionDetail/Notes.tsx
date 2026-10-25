@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { showToast } from '../../components';
 import { setSessionNotes } from '../../db/sessions';
 import styles from './SessionDetail.module.css';
 
@@ -15,7 +16,9 @@ export function Notes({ sessionId, initial }: { sessionId: string; initial: stri
     clearTimeout(timer.current);
     const value = pending.current;
     pending.current = null;
-    if (value !== null) void setSessionNotes(sessionId, value);
+    if (value !== null) {
+      setSessionNotes(sessionId, value).catch(() => showToast({ message: "Couldn't save your notes. Please try again." }));
+    }
   };
 
   useEffect(() => flush, []); // eslint-disable-line react-hooks/exhaustive-deps -- flush on leaving; it only reads refs

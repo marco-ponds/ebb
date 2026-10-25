@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastHost, useToastStore } from '../../components';
-import { addMissedContraction } from '../../db/contractions';
+import { addMissedContraction, deleteContraction } from '../../db/contractions';
 import { addEvent } from '../../db/events';
 import { endSession, startSession } from '../../db/sessions';
 import { updateSettings } from '../../db/settings';
@@ -10,7 +10,17 @@ import { dropDb, freshDb } from '../../db/testDb';
 import { getDb } from '../../db/schema';
 import * as share from '../../lib/share';
 import { initStore, teardownStore } from '../../state/store';
+import { installPointerEvent } from '../../charts/pointerPolyfill';
+import * as sessions from '../../db/sessions';
 import { SessionDetailScreen } from '.';
+
+vi.mock('../../db/contractions', async (orig) => {
+  const m = await orig<typeof import('../../db/contractions')>();
+  return { ...m, deleteContraction: vi.fn(m.deleteContraction) };
+});
+
+const unhandled: unknown[] = [];
+const onUnhandled = (e: unknown) => unhandled.push(e);
 
 const at = (h: number, m: number, s = 0) => new Date(2026, 9, 24, h, m, s).getTime();
 const MIN = 60_000;
@@ -42,11 +52,15 @@ const boot = async (id: string) => {
 };
 
 beforeEach(async () => {
+  installPointerEvent();
+  unhandled.length = 0;
+  process.on('unhandledRejection', onUnhandled);
   window.history.replaceState(null, '', '/');
   await freshDb();
   await updateSettings({ onboardedAt: 1 });
 });
 afterEach(async () => {
+  process.off('unhandledRejection', onUnhandled);
   vi.restoreAllMocks();
   vi.useRealTimers();
   useToastStore.setState({ toast: null });
@@ -319,5 +333,91 @@ describe('export (SD-09, SH-03)', () => {
     await boot(s.id);
     await userEvent.click(screen.getByRole('button', { name: 'Share summary' }));
     expect(screen.getByRole('dialog', { name: 'Share summary' })).toHaveTextContent(/Whole session: 3 contractions/);
+  });
+});
+
+describe('rest and interval (SD-05)', () => {
+  it('the edit sheet shows a read-only interval and rest', async () => {
+    const s = await seed(5);
+    await boot(s.id);
+    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    await userEvent.click(within(rows[0]).getByRole('button', { name: /Edit contraction/ }));
+    expect(within(screen.getByRole('dialog')).getByTestId('timing')).toHaveTextContent('Interval 5m · Rest 4m 10s');
+  });
+
+  it('the first contraction shows — for both', async () => {
+    const s = await seed(5);
+    await boot(s.id);
+    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    await userEvent.click(within(rows[4]).getByRole('button', { name: /Edit contraction/ }));
+    expect(within(screen.getByRole('dialog')).getByTestId('timing')).toHaveTextContent('Interval — · Rest —');
+  });
+
+  it('chart tooltips carry interval and rest', async () => {
+    const s = await seed(6);
+    await boot(s.id);
+    fireEvent.click(document.querySelectorAll('[data-bar-id]')[3]);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Interval 5mRest 4m 10s');
+    fireEvent.pointerEnter(document.querySelector('[data-point^="lasting"]')!);
+    expect(screen.getAllByRole('tooltip').pop()).toHaveTextContent(/Interval/);
+  });
+});
+
+describe('quiet failures', () => {
+  const swipe = (row: HTMLElement) => {
+    fireEvent.pointerDown(row, { clientX: 300, pointerId: 1 });
+    fireEvent.pointerMove(row, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerUp(row, { clientX: 100, pointerId: 1 });
+  };
+
+  it('a failed swipe-delete shows a quiet toast and leaves the row', async () => {
+    const s = await seed(5);
+    await boot(s.id);
+    vi.mocked(deleteContraction).mockRejectedValueOnce(new Error('disk full'));
+    const row = within(screen.getByRole('table')).getAllByRole('row')[1];
+    swipe(row);
+    await userEvent.click(await within(row).findByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Couldn't delete that. Please try again."));
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(6);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(unhandled).toEqual([]);
+  });
+
+  it('a cancelled CSV share is ignored without an unhandled rejection or toast', async () => {
+    vi.spyOn(share, 'saveFile').mockRejectedValue(new DOMException('cancelled', 'AbortError'));
+    const s = await seed(3);
+    await boot(s.id);
+    await userEvent.click(screen.getByRole('button', { name: 'CSV data' }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(unhandled).toEqual([]);
+  });
+
+  it('a failed CSV save says so quietly', async () => {
+    vi.spyOn(share, 'saveFile').mockRejectedValue(new Error('no space'));
+    const s = await seed(3);
+    await boot(s.id);
+    await userEvent.click(screen.getByRole('button', { name: 'CSV data' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Couldn't save the CSV. Please try again."));
+    expect(unhandled).toEqual([]);
+  });
+
+  it('a failed rename shows a toast', async () => {
+    const s = await seed(3);
+    await boot(s.id);
+    vi.spyOn(sessions, 'renameSession').mockRejectedValue(new Error('x'));
+    await userEvent.click(screen.getByRole('button', { name: /Rename/ }));
+    await userEvent.type(screen.getByLabelText('Session name'), 'New{Enter}');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Couldn't save the name. Please try again."));
+    expect(unhandled).toEqual([]);
+  });
+
+  it('failed notes autosave shows a toast', async () => {
+    const s = await seed(3);
+    await boot(s.id);
+    vi.spyOn(sessions, 'setSessionNotes').mockRejectedValue(new Error('x'));
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'hello' } });
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Couldn't save your notes. Please try again."), { timeout: 2000 });
+    expect(unhandled).toEqual([]);
   });
 });

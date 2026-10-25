@@ -1,8 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { FrequencyBars, Timeline, TrendChart, useZoomPan } from '../../charts';
 import { Card, Segmented } from '../../components';
 import type { ChartModel } from './chartData';
-import { RANGE_OPTIONS, rangeDomain, type RangeKey } from './model';
+import { RANGE_OPTIONS, rangeDomain, timingLines, type RangeKey, type Timing } from './model';
 import styles from './SessionDetail.module.css';
 
 const STRENGTH_TICKS = [2, 6, 10];
@@ -26,10 +26,11 @@ export interface ChartsSectionProps {
   end: number;
   active: boolean;
   onEdit: (contractionId: string) => void;
+  timing: Map<string, Timing>;
 }
 
 /** SD-04 / SD-05: the range control, then five charts sharing one x-domain with pinch, pan and double-tap reset. */
-export function ChartsSection({ model, startedAt, end, active, onEdit }: ChartsSectionProps) {
+export function ChartsSection({ model, startedAt, end, active, onEdit, timing }: ChartsSectionProps) {
   const [range, setRange] = useState<RangeKey>('session');
   const [zoom, setZoom] = useState<[number, number] | null>(null);
 
@@ -41,6 +42,8 @@ export function ChartsSection({ model, startedAt, end, active, onEdit }: ChartsS
     onChange: (d) => setZoom(d[0] === base[0] && d[1] === base[1] ? null : d),
   }).bind;
   const onDomainChange = (d: [number, number]) => setZoom(d[0] === base[0] && d[1] === base[1] ? null : d);
+
+  const tooltipLines = useCallback((id: string) => timingLines(timing.get(id)), [timing]);
 
   const buckets = useMemo(
     () => model.buckets.filter((b) => b.start + BUCKET_MS > domain[0] && b.start < domain[1]),
@@ -73,15 +76,16 @@ export function ChartsSection({ model, startedAt, end, active, onEdit }: ChartsS
           now={active ? end : undefined}
           summary={model.summaries.timeline}
           onSelect={onEdit}
+          tooltipLines={tooltipLines}
         />
       </ChartCard>
 
       <ChartCard title="Time apart" sub="minutes · dots each, line = average">
-        <TrendChart series={model.apart} domain={domain} yUnit="min" summary={model.summaries.apart} svgProps={bind} onSelect={onEdit} />
+        <TrendChart series={model.apart} domain={domain} yUnit="min" summary={model.summaries.apart} svgProps={bind} onSelect={onEdit} tooltipLines={tooltipLines} />
       </ChartCard>
 
       <ChartCard title="Lasting" sub="seconds">
-        <TrendChart series={model.lasting} domain={domain} yUnit="s" summary={model.summaries.lasting} svgProps={bind} onSelect={onEdit} />
+        <TrendChart series={model.lasting} domain={domain} yUnit="s" summary={model.summaries.lasting} svgProps={bind} onSelect={onEdit} tooltipLines={tooltipLines} />
       </ChartCard>
 
       <ChartCard title="Strength" sub={`out of 10 · ${model.unrated} not rated`}>
@@ -93,6 +97,7 @@ export function ChartsSection({ model, startedAt, end, active, onEdit }: ChartsS
           summary={model.summaries.strength}
           svgProps={bind}
           onSelect={onEdit}
+          tooltipLines={tooltipLines}
         />
       </ChartCard>
 

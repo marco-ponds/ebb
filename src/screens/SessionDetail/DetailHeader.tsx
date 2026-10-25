@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ChevronLeft, Download, Pencil } from 'lucide-react';
 import { goBack } from '../../app/router';
-import { IconButton } from '../../components';
+import { IconButton, showToast } from '../../components';
 import type { Session } from '../../db/types';
 import { renameSession } from '../../db/sessions';
 import { formatDateShort, formatSessionLength, formatTimeRange } from '../../domain/format';
@@ -19,7 +19,9 @@ function TitleEditor({ session, now }: { session: Session; now: number }) {
     done.current = true;
     setEditing(false);
     const next = value.trim() === '' ? null : value.trim();
-    if (save && next !== session.name) void renameSession(session.id, next);
+    if (save && next !== session.name) {
+      renameSession(session.id, next).catch(() => showToast({ message: "Couldn't save the name. Please try again." }));
+    }
   };
 
   if (!editing) {

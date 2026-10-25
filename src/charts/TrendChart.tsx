@@ -22,6 +22,8 @@ export interface TrendChartProps {
   /** Axis and tooltips read as time since the domain start ("0 h, 1 h, …") instead of clock times. */
   relative?: boolean;
   onSelect?: (refId: string) => void;
+  /** Extra tooltip lines for a point that has a refId, appended after the value. */
+  tooltipLines?: (refId: string) => string[];
   /** Spread onto the SVG to wire up useZoomPan. */
   svgProps?: React.SVGProps<SVGSVGElement>;
 }
@@ -40,7 +42,7 @@ const PAD = { top: 10, right: 10, bottom: 34, left: 30 };
 
 const round1 = (v: number) => String(Math.round(v * 10) / 10);
 
-export function TrendChart({ series, domain, yUnit, yTicks, summary, relative, onSelect, svgProps }: TrendChartProps) {
+export function TrendChart({ series, domain, yUnit, yTicks, summary, relative, onSelect, tooltipLines, svgProps }: TrendChartProps) {
   const [ref, width] = useWidth();
   const plotH = HEIGHT - PAD.top - PAD.bottom;
 
@@ -64,10 +66,10 @@ export function TrendChart({ series, domain, yUnit, yTicks, summary, relative, o
         .map(({ p, key }) => ({
           id: key,
           x: x(p.t),
-          describe: () => ({ title: relative ? `${formatOffset(p.t - domain[0])} in` : formatClock(p.t), lines: [`${round1(p.v)} ${yUnit}`] }),
+          describe: () => ({ title: relative ? `${formatOffset(p.t - domain[0])} in` : formatClock(p.t), lines: [`${round1(p.v)} ${yUnit}`, ...(p.refId !== undefined ? (tooltipLines?.(p.refId) ?? []) : [])] }),
           selectId: p.refId,
         })),
-    [series, domain, x, yUnit, relative],
+    [series, domain, x, yUnit, relative, tooltipLines],
   );
 
   return (

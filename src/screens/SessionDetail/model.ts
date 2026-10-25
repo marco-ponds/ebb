@@ -1,5 +1,6 @@
 import type { Contraction, EbbEvent, Session } from '../../db/types';
 import { EVENT_LABELS, watersLower } from '../../domain/events';
+import { formatDuration } from '../../domain/format';
 import {
   VERY_SHORT_MS,
   allStarts,
@@ -148,4 +149,24 @@ export function fileDate(epoch: number): string {
   const d = new Date(epoch);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export interface Timing {
+  interval: number | null;
+  rest: number | null;
+}
+
+/** Interval (start to start) and rest (end to start) per contraction, from the domain's deriveRows over every finished one. */
+export function timingById(cs: Contraction[]): Map<string, Timing> {
+  const points = cs
+    .filter((c) => c.endAt !== null && c.deletedAt === null)
+    .map((c) => ({ id: c.id, startAt: c.startAt, endAt: c.endAt as number, intensity: c.intensity }))
+    .sort((a, b) => a.startAt - b.startAt);
+  return new Map(deriveRows(points).map((r) => [r.c.id, { interval: r.interval, rest: r.rest }]));
+}
+
+/** "Interval 4m 30s" and "Rest 3m 40s" ("—" for the first contraction), for tooltips and the edit sheet. */
+export function timingLines(t: Timing | undefined): string[] {
+  const show = (ms: number | null | undefined) => (ms == null ? '—' : formatDuration(ms));
+  return [`Interval ${show(t?.interval)}`, `Rest ${show(t?.rest)}`];
 }

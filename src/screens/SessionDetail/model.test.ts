@@ -8,6 +8,8 @@ import {
   fileDate,
   rangeDomain,
   sessionEnd,
+  timingById,
+  timingLines,
   trendSeries,
 } from './model';
 
@@ -112,5 +114,22 @@ describe('trendSeries', () => {
 describe('fileDate', () => {
   it('is the local start date', () => {
     expect(fileDate(new Date(2026, 9, 5, 23, 59).getTime())).toBe('2026-10-05');
+  });
+});
+
+describe('timingById and timingLines', () => {
+  it('derives interval and rest from the previous contraction, with — for the first', () => {
+    const cs = [c('a', T0, 60_000), c('b', T0 + 5 * MIN, 50_000), c('d', T0 + 9 * MIN + 30_000, 40_000)];
+    const t = timingById(cs);
+    expect(t.get('a')).toEqual({ interval: null, rest: null });
+    expect(t.get('b')).toEqual({ interval: 5 * MIN, rest: 4 * MIN });
+    expect(t.get('d')).toEqual({ interval: 4.5 * MIN, rest: 4 * MIN - 20_000 });
+    expect(timingLines(t.get('a'))).toEqual(['Interval —', 'Rest —']);
+    expect(timingLines(t.get('b'))).toEqual(['Interval 5m', 'Rest 4m']);
+  });
+  it('counts unreviewed very short contractions and ignores deleted ones', () => {
+    const cs = [c('a', T0, 60_000), c('x', T0 + MIN, 2000, { deletedAt: 1 }), c('s', T0 + 3 * MIN, 2000)];
+    expect(timingById(cs).get('s')).toEqual({ interval: 3 * MIN, rest: 2 * MIN });
+    expect(timingById(cs).has('x')).toBe(false);
   });
 });
