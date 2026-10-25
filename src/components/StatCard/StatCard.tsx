@@ -35,7 +35,7 @@ export function StatCard({ label, value, caption, dimmed }: StatCardProps) {
   }, [value]);
 
   return (
-    <div className={styles.card} style={dimmed ? { opacity: 0.55 } : undefined}>
+    <div className={styles.card} data-dimmed={dimmed ? 'true' : 'false'} style={dimmed ? { opacity: 0.55 } : undefined}>
       <div className={styles.label}>{label}</div>
       <div ref={valueRef} className={styles.value} style={{ whiteSpace: 'nowrap' }}>
         {value}

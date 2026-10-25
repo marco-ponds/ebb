@@ -22,3 +22,8 @@
 .pill[data-tone='faint'] {
   color: var(--text-faint);
 }
+
+/* Inside a dimmed (55 %) region the tinted text would fall under 4.5:1, so it takes the full text colour. */
+:global([data-dimmed='true']) .pill[data-tone] {
+  color: var(--text);
+}
