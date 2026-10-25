@@ -5,38 +5,17 @@ import { Wordmark } from '../../app/Wordmark';
 import { Link, navigate } from '../../app/router';
 import { Card, HeroButton, IconButton, SafetyLine, showToast } from '../../components';
 import { Sparkline } from '../../charts/Sparkline';
-import { exportBackup } from '../../db/backup';
+import { exportBackup, markBackupDone } from '../../db/backup';
 import { startSession } from '../../db/sessions';
 import { displayName } from '../../domain/naming';
 import { formatDateShort, formatRelativeDays, formatSessionLength, formatTimeRange } from '../../domain/format';
 import { saveFile } from '../../lib/share';
 import { useContractions, useSessions, useSettings } from '../../state/hooks';
-import { useAppStore } from '../../state/store';
 import type { Session } from '../../db/types';
 import styles from './Start.module.css';
 
 /** Prominent backup nudge: durable storage was refused and there is real history at stake. */
 const NUDGE_AFTER_SESSIONS = 3;
-
-/**
- * Resolves once the store shows an active session. The write has committed by then, but the store
- * follows the database a moment later, and Live redirects to Start while it sees no session.
- */
-function storeShowsActiveSession(): Promise<void> {
-  if (useAppStore.getState().activeSession) return Promise.resolve();
-  return new Promise((resolve) => {
-    const stop = useAppStore.subscribe((s) => {
-      if (!s.activeSession) return;
-      stop();
-      clearTimeout(timer);
-      resolve();
-    });
-    const timer = setTimeout(() => {
-      stop();
-      resolve();
-    }, 2000);
-  });
-}
 
 function usePersistDenied(): boolean {
   const [denied, setDenied] = useState(false);
@@ -103,7 +82,6 @@ export function StartScreen() {
     setStarting(true);
     try {
       await startSession();
-      await storeShowsActiveSession();
       navigate('#/live');
     } finally {
       setStarting(false);
@@ -116,6 +94,7 @@ export function StartScreen() {
     try {
       const { blob, filename } = await exportBackup(Date.now());
       await saveFile(blob, filename);
+      await markBackupDone(Date.now()); // only now: a cancelled or failed save must not read "today"
     } catch (e) {
       // Closing the share sheet is a choice, not a failure.
       if (!(e instanceof DOMException && e.name === 'AbortError')) {

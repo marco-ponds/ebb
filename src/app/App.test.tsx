@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { showToast, useToastStore } from '../components';
 import { startContraction } from '../db/contractions';
@@ -64,8 +64,21 @@ describe('App routing and landing guard', () => {
     window.history.replaceState(null, '', '#/live');
     await boot();
     render(<App />);
-    expect(window.location.hash).toBe('#/');
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
     expect(h1()).toHaveTextContent("Whenever you're ready.");
+  });
+
+  it('does not bounce #/live while the store lags a session already in the database', async () => {
+    await startSession(1000);
+    await updateSettings({ onboardedAt: 1 });
+    // Store is "ready" but has not caught up with the committed write.
+    useAppStore.setState({ ready: true, activeSession: null, settings: { ...useAppStore.getState().settings, onboardedAt: 1 } });
+    window.history.replaceState(null, '', '#/live');
+    render(<App />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(window.location.hash).toBe('#/live');
   });
 
   it('leaves other routes alone', async () => {

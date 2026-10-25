@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Skeleton, ToastHost } from '../components';
+import { findActiveSession } from '../db/sessions';
 import { CompareScreen } from '../screens/Compare';
 import { HistoryScreen } from '../screens/History';
 import { LiveScreen } from '../screens/Live';
@@ -24,6 +25,27 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
+/**
+ * The store trails the database by a moment, so "no active session" in the store is not proof.
+ * Confirm with a direct read before sending #/live back to Start.
+ */
+function LiveGuard() {
+  const activeSession = useAppStore((s) => s.activeSession);
+  const [inDb, setInDb] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (activeSession) return;
+    let live = true;
+    void findActiveSession().then((found) => live && setInDb(found !== undefined));
+    return () => {
+      live = false;
+    };
+  }, [activeSession]);
+
+  if (activeSession || inDb) return <LiveScreen />;
+  return inDb === false ? <Redirect to="#/" /> : null;
+}
+
 function Screen({ route }: { route: Route }) {
   const onboardedAt = useAppStore((s) => s.settings.onboardedAt);
   const activeSession = useAppStore((s) => s.activeSession);
@@ -37,7 +59,7 @@ function Screen({ route }: { route: Route }) {
       return <StartScreen />;
     }
     case 'live':
-      return activeSession ? <LiveScreen /> : <Redirect to="#/" />;
+      return <LiveGuard />;
     case 'history':
       return <HistoryScreen />;
     case 'session':

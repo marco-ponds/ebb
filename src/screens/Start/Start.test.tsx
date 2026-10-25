@@ -66,7 +66,7 @@ describe('StartScreen', () => {
     await boot();
     await userEvent.click(screen.getByRole('button', { name: /Start timing/ }));
     await waitFor(() => expect(window.location.hash).toBe('#/live'));
-    expect(useAppStore.getState().activeSession).not.toBeNull();
+    await waitFor(() => expect(useAppStore.getState().activeSession).not.toBeNull());
   });
 
   it('hides the last-session card when there is no history', async () => {
@@ -123,6 +123,21 @@ describe('StartScreen', () => {
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0]?.[1]).toMatch(/^ebb-backup-\d{4}-\d{2}-\d{2}\.json$/);
     expect(await screen.findByRole('button', { name: 'Back up · today' })).toBeInTheDocument();
+  });
+
+  it('keeps the previous label when the save fails or is cancelled', async () => {
+    const before = Date.now() - 5 * DAY;
+    await updateSettings({ lastBackupAt: before });
+    await boot();
+    const save = vi.spyOn(share, 'saveFile');
+    save.mockRejectedValueOnce(new DOMException('closed', 'AbortError'));
+    await userEvent.click(screen.getByRole('button', { name: 'Back up · 5 days ago' }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    save.mockRejectedValueOnce(new Error('disk'));
+    await userEvent.click(screen.getByRole('button', { name: 'Back up · 5 days ago' }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('button', { name: 'Back up · 5 days ago' })).toBeInTheDocument();
+    expect(useAppStore.getState().settings.lastBackupAt).toBe(before);
   });
 
   it('tells the person, quietly, when the file could not be saved', async () => {
