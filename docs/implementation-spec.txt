@@ -1,0 +1,1149 @@
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Ebb — Contraction Tracker: Implementation
+  Spec
+    Oct 25, 2026         · ​@Marco
+
+
+  How to use this spec
+  Build Ebb, an offline-first, installable PWA for timing contractions, exactly as drawn in the
+  screenshots below. Everything is stored on the device, with no accounts, no network calls
+  after install and no analytics. The app records and describes; it never diagnoses or says
+  whether someone is in labour.
+
+  For Claude Code:
+
+       Treat the screenshots and the Design tokens section as the visual source of truth. The
+       canvas source files ( .dc.html ) are reference HTML: copy their spacing, radii and copy,
+       not their runtime.
+       Treat every acceptance criterion (AC) as a test to write. ACs are numbered by screen,
+       e.g. LT-04.
+       When this spec and the screenshots disagree, the spec wins for behaviour and the
+       screenshots win for layout.
+       Store raw timestamps only. Every number on screen is derived (Data model section).
+       Never add red, alarms, countdowns or medical labels. The Copy rules section is a hard
+       constraint, not a style preference.
+
+  Users. The labouring person taps start/stop one-handed, in pain, often in the dark. The
+  birth partner usually holds the phone, reads numbers out to a midwife and edits entries.
+  The phone passes between them, and a session can run for 12+ hours with the screen on.
+
+  In scope for v1: live tracking, intensity, events, sessions, history, session detail with charts,
+  comparison, user thresholds, share text, PDF/CSV export, JSON backup and restore,
+  settings.
+
+  Out of scope for v1: accounts, cloud or partner sync, push notifications, clinical advice,
+  pregnancy tracking, kick counting, hospital bag lists.
+
+
+
+
+                                                                                             Page 1 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Screens
+  The app has six screen types. The live tracker has three states, giving eight frames, all at
+  390 × 844 pt (iPhone 14/15 portrait). The editable source is the Design canvas.
+
+  Font note: these screenshots were rendered with Inter as a stand-in because Nunito
+  wasn't available offline. The app must use Nunito (Design tokens section). Expect Nunito
+  to look slightly rounder and narrower.
+
+
+
+
+                                                                                          Page 2 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  1. Live tracker: resting (ID LT)
+
+
+
+
+                                                 Page 3 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 4 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  2. Live tracker: during a contraction (ID LT)
+
+
+
+
+                                                  Page 5 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 6 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  3. Live tracker: just ended, rate it (ID LT)
+
+
+
+
+                                                 Page 7 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 8 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  4. Start, no active session (ID ST)
+
+
+
+
+                                                 Page 9 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 10 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  5. History, in select-to-compare mode (ID HI)
+
+
+
+
+                                                  Page 11 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 12 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  6. Session detail, full scroll (ID SD)
+
+
+
+
+                                                 Page 13 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 14 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 15 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 16 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 17 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  7. Compare sessions (ID CO)
+
+
+
+
+                                                 Page 18 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 19 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  8. Settings (ID SE)
+
+
+
+
+                                                 Page 20 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 21 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 22 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Palette, type and shapes reference
+
+
+
+
+                                                 Page 23 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+                                                 Page 24 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Design tokens
+  Put every value below into one tokens file (CSS custom properties) and use nothing
+  outside it. The aim is calm: a dusk-plum night background, pastel accents that each mean
+  one thing, and no pure white, red or flashing.
+
+
+  Typeface: Nunito
+       Family: Nunito (Google Fonts, SIL Open Font License). Chosen for its rounded
+       terminals, which read as soft, and its clear figures.
+       Self-host it. Bundle the woff2 files for weights 600, 700, 800 and 900 with the app and
+       precache them in the service worker. Don't load from Google Fonts at runtime,
+       because the app must work offline from first load.
+       Fallback stack: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-
+       serif .
+       Every number uses font-variant-numeric: tabular-nums so timers don't jitter as
+       digits change.
+       Use font-display: block for at most 300 ms, then swap, so the timer never flashes
+       in the fallback font on reopen.
+
+
+     Role                    Size / weight                             Used for
+
+     Hero timer              76–92 px / 900, letter-spacing −1 to −2   Running timer in the big button
+                             px
+
+     Stat value              36–40 px / 900                            Time apart, Lasting
+
+     Button                  22–30 px / 900                            Tap when it starts, Tap when it
+     label                                                             eases
+
+     Screen title            22 px / 900                               Sessions, Settings
+
+     Card title              16–19 px / 900                            How strong was that one?, chart
+                                                                       titles
+
+     Body                    14–15 px / 600–700                        Rows, descriptions
+
+     Caption                 12–13 px / 600–800                        Labels, axis text, disclaimers
+
+
+  Keep the minimum at 12 px. On the live screen the main figures (timer, last interval, last
+  duration) must stay readable from 1 m away.
+
+
+
+
+                                                                                                         Page 25 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Colour
+
+     Token                                       Hex       Role
+
+      --bg (Dusk)                                #1B1929   Page background
+
+      --surface (Cushion)                        #252238   Cards
+
+      --surface-2 (Pillow)                       #2F2B45   Secondary buttons, table dividers
+
+      --hairline                                 #3A3553   Grid lines, inactive tracks
+
+      --text (Moonlight)                         #F1ECF8   Primary text
+
+      --text-muted                               #B3ACCB   Labels
+
+      --text-faint                               #8C85A8   Captions (passes 4.5:1 on --bg )
+
+      --ink                                      #2A2442   Text on any pastel
+
+      --lavender                                 #CBBBF4   Ready/resting state, primary actions, contraction
+                                                           bars
+
+      --peach                                    #F7C9B5   A contraction is in progress; duration chart
+
+      --mint                                     #AEDFCF   Events, "screen stays on", regularity meter
+
+      --butter                                   #F1E0AA   User thresholds and their banner; intensity chart
+
+      --sky                                      #B4CAF0   Second series (compare), per-10-min bars
+
+      --rose                                     #F2B8C6   Destructive text only (Delete all data). Never a fill.
+
+
+  Tinted panels use the accent at 10–16 % alpha on --surface , for example the threshold
+  banner rgba(241,224,170,0.12) .
+
+
+  Shape, spacing and motion
+       Radius grows with size: hero button 48, cards 26–30, buttons 20, small icon buttons 18,
+       pills 999, circular contraction button 50 %.
+       Spacing: 4-pt base; the screen gutter is 20 px, gaps between cards 10–16 px.
+       Touch targets: at least 48 × 48 px; the main button fills all spare vertical space (at least
+       240 px tall).
+       Halo: the hero button has two soft rings in its own colour, at 10 % (10 px) and 5 % (22
+       px). No drop shadows, no gradients.
+
+
+
+                                                                                                                Page 26 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       Breathing glow: an 8 s ease-in-out loop that scales 0.94 → 1.04 at 35 → 90 % opacity
+       behind the contraction button. It is disabled under prefers-reduced-motion and by
+       the Settings toggle.
+       Transitions: 200–250 ms ease-out colour crossfade between resting and contracting.
+       No bounces, shakes or flashes anywhere.
+       Icons: 2–2.4 px stroke, rounded caps and joins (Lucide is a good match). No emoji.
+
+
+  Data model and derived metrics
+  Store raw timestamps in IndexedDB and compute everything else. Write each tap to disk
+  before updating the UI, so a crash or a lock never loses a tap. All times are epoch
+  milliseconds (UTC); display uses the device's local time zone.
+
+
+
+
+                                                                                            Page 27 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Stores (IndexedDB database ebb , version 1)
+
+     Store                        Key            Fields                       Indexes
+
+      sessions                     id (UUID      name? , startedAt ,          startedAt , endedAt
+                                  v4)            endedAt? (null = active),
+                                                 notes , createdAt ,
+                                                 updatedAt
+
+      contractions                 id            sessionId , startAt ,        sessionId ,
+                                                 endAt? (null = in            [sessionId+startAt]
+                                                 progress), intensity? (1–
+                                                 10), note? , deletedAt?
+
+      events                       id            sessionId , at , type ,      [sessionId+at]
+                                                 details? , deletedAt?
+
+      settings                     'singleton'   thresholds[] ,               —
+                                                 intensityScale ( words |
+                                                 numeric | both ), theme
+                                                 ( night | day | system ),
+                                                  keepAwake , haptics ,
+                                                  breathingGlow ,
+                                                  lastBackupAt? ,
+                                                 onboardedAt?
+
+      undo                         'singleton'   the last reversible action   —
+                                                 (type + snapshot)
+
+
+       Event types: waters (details: clear | pink | green-brown | unsure ), bleeding ,
+        reduced-movement , called-midwife , went-to-hospital , note .
+       Invariants: at most one session with endedAt = null ; at most one contraction with
+        endAt = null , and only in the active session.
+       Soft delete: deletes set deletedAt , so Undo can restore them; queries filter these out.
+       Hard-delete soft-deleted rows when their session ends plus 24 h.
+       Intensity: stored as 1–10 whatever scale is shown. The five-word scale maps Mild 2,
+       Medium 4, Strong 6, Very strong 8, Intense 10.
+
+
+
+
+                                                                                                    Page 28 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Derived metrics
+  For contractions c₁…cₙ in a session, ordered by startAt , counting only finished, non-
+  deleted ones:
+
+     \text{duration}_i = \text{end}_i - \text{start}_i \qquad \text{interval}_i =
+     \text{start}_i - \text{start}_{i-1} \qquad \text{rest}_i = \text{start}_i -
+     \text{end}_{i-1}
+
+
+       Time apart (UI label) = interval. Rest is shown only in session detail.
+       Rolling averages over the last 30 and 60 min: the mean of intervals whose start falls in
+       the window. Show — until there are at least 2 intervals.
+       Per 10 min: the count of contraction starts in [now − 10 min, now); charts use fixed 10-
+       min buckets from the session start.
+       Regularity = the coefficient of variation of intervals in the last 60 min, needing at least
+       4 intervals. CV < 0.20 → Regular; 0.20–0.40 → Fairly regular; > 0.40 → Irregular. Always
+       show the range too ("every 4–6 min", the 10th–90th percentile, rounded to whole
+       minutes).
+       Progression: the least-squares slope of interval, duration and intensity against start
+       time over the last 60 min (at least 5 points). Interval slope < −0.5 min/h → "getting
+       closer together"; > +0.5 → "getting further apart"; else "steady". Duration slope beyond
+       ±5 s/h → "getting longer" or "getting shorter". Intensity slope beyond ±0.5/h → "getting
+       stronger" or "easing off".
+       Gap: an interval more than 2.5 × the median of the previous 5, and at least 15 min. Draw
+       it as a dashed empty box on the timeline. Exclude it from regularity and progression.
+       Formatting: under 60 s → 58s ; under 60 min → 4m 10s ; otherwise 1 h 15 m . Timers
+       on buttons use m:ss (and h:mm:ss past 1 h).
+
+
+  App lifecycle: open, close, resume
+  There is no in-app loading screen. On a cold start the OS shows the manifest splash (Dusk
+  background, lavender "ebb" mark). The app shell then paints from the service-worker
+  cache in under 500 ms and lands directly on the right screen. The rules below decide
+  which screen that is.
+
+
+  Where the app lands on open
+   1. No onboardedAt → Welcome (first launch, below).
+
+
+
+                                                                                             Page 29 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+   2. A contraction with endAt = null → Live tracker, contracting state, with elapsed time
+       = now − startAt .
+   3. A session with endedAt = null → Live tracker, resting state, with "since the last one
+       started" computed from the last startAt .
+   4. Otherwise → Start screen.
+
+
+
+
+  landing rules on every open · 3 checks, 4 destinations
+
+  If the IndexedDB read takes longer than 300 ms, show a skeleton of the target screen:
+  card outlines plus the big button in --surface-2 , with no text and no spinner. Never
+  show a blank or white frame. Set background-color: #1B1929 on html in the inline
+  critical CSS so the very first paint is dark.
+
+
+  First launch (Welcome)
+  This is one screen, not a carousel:
+
+       The "ebb" mark and the line "Time contractions with one tap. Everything stays on this
+       phone."
+       The safety line: "This app records contractions. It doesn't give medical advice — if
+       you're worried, contact your midwife or maternity unit."
+
+
+
+
+                                                                                          Page 30 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       Install hint: shown only when not running standalone. On iOS: "Tap Share, then Add to
+       Home Screen." On Android/Chromium: an Install button using beforeinstallprompt .
+       Primary button: Get started. It calls navigator.storage.persist() , sets
+       onboardedAt and goes to Start. Thresholds aren't asked for here; they live in Settings.
+
+
+  While a session is active
+       Wake lock: request navigator.wakeLock.request('screen') when a session starts
+       or the app becomes visible with an active session (if Keep screen awake is on). Re-
+       acquire it on every visibilitychange to visible. Release it when the session ends.
+       Wake lock pill: "Screen stays on" in mint while held. If the API is missing or the request
+       fails, it reads "Screen may sleep" in --text-faint , with no alert.
+       Timers: tick with requestAnimationFrame , throttled to 1 Hz for display. Always
+       compute from stored timestamps, never from an incrementing counter.
+       Rolling stats recompute on every tap and every 15 s.
+
+
+  Closing, locking and backgrounding
+       Nothing needs saving on close, because every tap is committed before the UI changes.
+       Never rely on beforeunload or pagehide to persist data.
+       If the phone locks or the app is killed mid-contraction, endAt stays null. On reopen the
+       contracting state resumes with the true elapsed time (LT-11).
+       Stale contraction: on reopen, if an in-progress contraction is older than 5 min, the
+       button still shows the elapsed time. Above it appears a quiet card: "Still going? This
+       one's been running 23 min." with two actions, Ended earlier… (opens a time picker for
+       the end) and Keep timing.
+       Long pause: on reopen with a resting session and no contraction for 60+ min, show
+       "Contractions paused? Last one 1 h 12 m ago." with Keep session going and End
+       session…. Never end a session automatically.
+
+
+  Updates (service worker)
+       Precache the app shell, fonts and icons at install. Runtime: cache-first for same-origin
+       assets. There are no network requests for data, ever.
+       A new version installs in the background but never activates or reloads during an
+       active session. When no session is active, it activates on the next cold start. Settings
+       shows "Update ready — restart the app to use it" until then.
+
+
+
+
+                                                                                            Page 31 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       Bump the IndexedDB schema only with forward migrations in onupgradeneeded , and
+       take an automatic JSON snapshot into the backups cache first.
+
+
+  User journeys
+  These seven journeys are the end-to-end tests. Each step names the screen and what
+  must happen.
+
+
+  J1. First contraction of the night (labouring person, alone, one hand)
+   1. Opens Ebb from the home screen and lands on Start.
+   2. Taps Start timing. A session is created and Live opens in the resting state with "No
+      contractions yet" and the button reading Tap when it starts.
+   3. A contraction begins: one tap anywhere on the button. It turns peach, a soft haptic
+       plays (if on), and the timer counts up from 0:00.
+   4. It eases: one tap. The button returns to lavender and the strength picker slides in
+      above it.
+   5. Ignores the picker; it closes by itself after 30 s. Intensity stays empty and can be added
+       later.
+
+
+  J2. Partner takes over and reads numbers to the midwife
+   1. Partner picks up the phone. Live already shows the last time apart and length in large
+       type.
+   2. The midwife asks how often. Partner reads "every 4m 20s over the last 30 minutes,
+       lasting about 55 seconds".
+   3. Taps Share. A sheet shows the summary paragraph with Copy and Share… (Web Share
+      API). Partner reads it aloud or texts it.
+   4. Taps Event → Called midwife. A mint marker appears on the mini timeline.
+
+
+  J3. A mis-tap
+   1. The person taps start by accident. The button turns peach.
+   2. Taps Started by mistake. The contraction is discarded and the button goes back to
+      resting, with no confirmation.
+   3. Or, after stopping a contraction they didn't mean to: taps Undo within the resting
+       state, which restores the contraction to in-progress with its original start time.
+
+
+
+
+                                                                                            Page 32 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  J4. Threshold met
+   1. Earlier, in Settings, the partner switched on 3 in 10 min, as the midwife advised.
+   2. After a contraction ends and the rule is satisfied, the butter banner appears: "Matches
+      the threshold you set — 3 in 10 min."
+   3. The banner stays while the rule holds and can be dismissed with ×. It reappears only if
+       the rule stops holding and then holds again.
+
+
+  J5. Waters break, with a gentle prompt
+   1. Taps Event → Waters broke, then picks a colour (Clear, Pink, Green or brown, Not
+       sure). Time defaults to now and can be changed.
+   2. The event saves. Selecting Green or brown, Bleeding or Reduced baby movement
+      shows one calm line below the confirmation: "If you haven't already, contact your
+       midwife or maternity unit." It has no colour change, no icon and no countdown.
+
+
+  J6. Fixing the record later
+   1. Opens the session from the Live header (taps "Tonight") or from History, and lands on
+       Session detail.
+   2. Taps the pencil on a row and edits start, end, strength and note in a bottom sheet with
+      time pickers. Saving recomputes all charts.
+   3. Taps Add a missed contraction, enters start and length, and it slots into order.
+   4. Renames the session to "Saturday morning" by tapping the title.
+
+
+  J7. Ending, comparing and backing up
+   1. On Live, presses and holds "Press and hold to end session" for 1.5 s. A ring fills under
+       the finger; letting go early cancels.
+   2. A sheet asks "End this session?" with a summary and End session / Keep going. Ending
+      sets endedAt and returns to Start.
+   3. Days later, opens History → selects Tonight and Tuesday → Compare.
+   4. In Settings → Back up everything, a ebb-backup-2026-10-25.json file is downloaded
+      or shared. The Start screen's backup button then shows "Back up · today".
+
+
+
+
+                                                                                           Page 33 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Screens and acceptance criteria
+  Each AC is one testable statement. Routes are hash-based so the app works from any
+  static host: #/ , #/live , #/history , #/session/:id , #/compare?ids=a,b , #/settings .
+
+
+  Live tracker (LT): screens 1–3
+  The layout from top to bottom: the header (session name linking to detail, elapsed time,
+  wake-lock pill), two stat cards, the averages card, the pattern line, the hero button (flex:
+  1), the mini timeline (linking to detail), the action row, and the end-session control.
+
+       LT-01 Tapping anywhere on the hero button toggles resting ↔ contracting. A tap
+       commits to IndexedDB before the UI changes, and the UI responds within 100 ms.
+       LT-02 Resting: lavender, labelled "Tap when it starts", with a big timer for time since the
+       last start (or "No contractions yet" with no timer).
+       LT-03 Contracting: a 300 px peach circle labelled "Contraction" above and "Tap when it
+       eases" below, with an elapsed m:ss timer. The header and stat cards drop to 55 %
+       opacity.
+       LT-04 Taps within 600 ms of the previous toggle are ignored (debounce) to absorb
+       double taps.
+       LT-05 The stat cards show the last interval ("Time apart") and last duration ("Lasting"),
+       or — when unknown. Values never wrap; they shrink to 32 px if needed.
+       LT-06 The averages card shows the last 30 and 60 min as "every {interval} · {duration}
+       long", or "Not enough yet".
+       LT-07 The pattern line shows regularity · progression in plain words, with a mint dot for
+       Regular, butter for Fairly regular and faint for Irregular. It is hidden when there's too
+       little data.
+       LT-08 When a contraction ends, the strength card appears with five options (Mild…
+       Intense) shown as growing dots plus words, a numeric 1–10 row, or both (per Settings).
+       Choosing one saves and closes it. Skip closes it. With no choice it closes after 30 s,
+       with a thin progress bar. It closes immediately if a new contraction starts.
+       LT-09 The mini timeline shows the last 60 min: bar x = start, width = duration (min 5 px),
+       height = intensity (unrated = middle height, hollow outline). Event markers are circles.
+       A dotted line marks now.
+       LT-10 Undo reverts the last action (start, stop, rating, event, edit) in one tap, with no
+       confirmation. A toast reads "Undone" for 3 s. Undo depth is 1. During a contraction the
+       left action is labelled Started by mistake.
+
+
+
+
+                                                                                              Page 34 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       LT-11 Reopening the app mid-contraction restores the contracting state with the
+       correct elapsed time, within ±1 s.
+       LT-12 Event opens a bottom sheet with the six types, an optional time (default now)
+       and an optional note. Saving shows a mint marker.
+       LT-13 Share opens the summary sheet (see SH).
+       LT-14 Ending the session requires a 1.5 s press-and-hold, then a confirmation sheet. It is
+       never a single tap.
+       LT-15 The threshold banner (butter tint) appears only when an enabled user threshold
+       is met. It uses role="status" and is dismissible.
+       LT-16 Haptics ( navigator.vibrate(15) on start, [10,60,10] on stop) fire only if
+       enabled and supported. Absence is silent.
+
+
+  Start (ST): screen 4
+       ST-01 "Whenever you're ready." sits above a lavender hero Start timing button that
+       creates a session and opens Live.
+       ST-02 The last-session card shows name, date, time range, length, count and a
+       sparkline, and opens Session detail. It is hidden when there is no history.
+       ST-03 All sessions opens History. The backup button shows the relative time since the
+       last backup ("never" in --butter if none and data exists).
+       ST-04 The safety line is always visible at the bottom.
+
+
+  History (HI): screen 5
+       HI-01 Sessions are listed newest first. Each card shows name (or the default name, e.g.
+       "Sunday evening", from the start's weekday and part of day), date and time range,
+       length, count, average time apart, average length and a sparkline. The active session
+       shows the peach "In progress" pill.
+       HI-02 Tapping a card opens detail. Select enters select mode, showing checkbox
+       circles and a bottom bar "{n} selected · Compare".
+       HI-03 Compare is enabled for 2–3 selections. A fourth selection is blocked with the
+       hint "Up to three at a time".
+       HI-04 The empty state reads "Sessions you time will appear here" with a Start timing
+       link.
+
+
+
+
+                                                                                           Page 35 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Session detail (SD): screen 6
+       SD-01 The header has back, an editable title (tap → inline input, saves on blur or Enter)
+       and an Export button.
+       SD-02 Summary: contractions (total and last hour), time apart, lasting and strength
+       averages over the last hour (or the whole session if ended).
+       SD-03 The pattern card shows a three-step regularity meter (shape plus label, not
+       colour alone), the range text and three progression rows with icons.
+       SD-04 The range control (Last hour / Last 3 h / Whole session) sets the x-domain of all
+       charts. Pinch-zoom and drag-pan work on the time axis; double-tap resets.
+       SD-05 Charts: Timeline (hero), Time apart (dots plus a rolling average of 3), Lasting,
+       Strength (unrated count in the subtitle), and Per 10 minutes. Tapping a bar or point
+       shows a tooltip with exact times and an Edit link.
+       SD-06 The log table is newest first and mixes contractions and events. Each row has an
+       edit pencil; swiping left reveals Delete (soft, undoable). It shows the latest 8 rows plus
+       "Show all {n} entries".
+       SD-07 Add a missed contraction opens a sheet with start time and length. It is
+       rejected inline if it overlaps another contraction.
+       SD-08 Notes are a free textarea that autosaves after 500 ms idle.
+       SD-09 Actions: Share summary, PDF report and CSV data (see SH).
+
+
+  Compare (CO): screen 7
+       CO-01 The legend distinguishes series by fill and line style (solid lavender vs dashed
+       sky outline), never by colour alone.
+       CO-02 Timelines are stacked and aligned at t = 0 on a shared hour axis sized to the
+       longest session.
+       CO-03 Interval trends are overlaid as a rolling average of 4.
+       CO-04 The metrics table shows length, contractions, time apart, lasting, strength and
+       pattern, one column per session.
+
+
+  Settings (SE): screen 8
+       SE-01 Threshold presets: 3 in 10 min; 5-1-1; 4-1-1; 3-1-1, all off by default. + Custom
+       threshold lets the user define either N in M minutes or A-L-D (apart ≤ A min, lasting ≥ L
+       min, for D hours).
+       SE-02 Strength scale (5 words / 1–10 / Both); Look (Night / Day / Match phone).
+
+
+
+                                                                                                 Page 36 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       SE-03 Toggles: Keep screen awake, Gentle buzz and Breathing glow, all on by default.
+       SE-04 Data: Back up everything (JSON), Restore from a backup (file input, preview
+       counts, then Merge or Replace) and Delete all data… (rose text, typed confirmation
+       "delete").
+       SE-05 The safety line and the app version appear at the bottom.
+
+
+  Share and export (SH)
+       SH-01 The summary text follows this template: "Last hour: {n} contractions, every
+       {interval}, lasting about {duration}, strength about {i}/10. {events}". Example: "Last
+       hour: 12 contractions, every 4.5 min, lasting about 55 s, strength about 6/10. Waters
+       broke 23:30, clear."
+       SH-02 The PDF is generated on device (e.g. jsPDF plus SVG charts): a summary, the
+       timeline, the trend charts and the full table, A4 portrait, light theme.
+       SH-03 CSV columns: type,start,end,duration_s,interval_s,intensity,note , with
+       ISO 8601 local time and offset.
+       SH-04 The backup JSON is {app:"ebb", schema:1, exportedAt, sessions[],
+       contractions[], events[], settings} . Import validates the schema version and IDs,
+       and de-duplicates by id .
+
+
+  Thresholds and copy rules
+  The app describes what happened and points back to the user's own plan. It never
+  interprets the pattern medically.
+
+
+  Threshold evaluation
+       Evaluate all enabled thresholds after each contraction ends, after an edit, and every 60
+       s.
+       N in M: at least N contraction starts in the last M minutes.
+       A-L-D: every interval ≤ A min and every duration ≥ L min (±5 s tolerance) across the last
+       D hours, with at least (D × 60 / A) − 1 contractions in that window and no gap.
+       When a threshold is met, show the banner "Matches the threshold you set — {name}",
+       with the user's custom label if set. If several are met, show the first in list order. Record
+       the first match time per session as a timeline marker ("Threshold met").
+
+
+
+
+                                                                                              Page 37 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Copy rules (hard constraints)
+
+     Do                                              Never
+
+     "every 4–6 min over the last hour"              "You are in active labour" / "early labour"
+
+     "getting closer together", "steady", "easing    "Braxton Hicks", "false labour", "progressing
+     off"                                            well"
+
+     "Matches the threshold you set"                 "Time to go to hospital", "Call now!"
+
+     "If you haven't already, contact your midwife   Red text, warning icons, sirens, countdowns,
+     or maternity unit."                             exclamation marks
+
+     "Contractions paused?"                          "Labour has stopped"
+
+
+       Voice: warm, plain, brief, second person. Use sentence case. Use UK spelling and 24-
+       hour times by default, following the locale.
+       Safety line (verbatim, on Welcome, Start and Settings): "This app records contractions.
+       It doesn't give medical advice — if you're worried, contact your midwife or maternity
+       unit."
+       Gentle prompt (verbatim) after the events bleeding, reduced baby movement, or
+       waters green or brown: "If you haven't already, contact your midwife or maternity unit."
+
+
+  Edge cases
+  Each row is a required behaviour and needs a test.
+
+
+     Case                                            Required behaviour
+
+     Double tap or palm tap on the hero button       600 ms debounce (LT-04); Undo covers the
+                                                     rest
+
+     Contraction under 5 s                           Saved, but marked "very short" in the log;
+                                                     excluded from averages until edited
+
+     Contraction over 5 min / app reopened mid-      "Still going?" card with Ended earlier… and
+     contraction much later                          Keep timing (Lifecycle section)
+
+     No contraction for 60+ min                      "Contractions paused?" card; never auto-end
+
+
+
+
+                                                                                               Page 38 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+     Case                                        Required behaviour
+
+     Session past midnight                       Times keep counting; the default name uses
+                                                 the start day ("Saturday night"); charts label
+                                                 dates when crossing midnight
+
+     Clock or time-zone change mid-session       Store UTC epoch ms; compute durations
+     (travel, daylight saving ends 25 Oct)       from timestamps; if a new startAt < the
+                                                 previous one (clock moved back), keep
+                                                 insertion order and flag the row "time
+                                                 changed" for review
+
+     Edits that overlap another contraction      Reject inline: "Overlaps the one at 23:44"
+
+     Edit puts end before start                  The save button is disabled with an inline hint
+
+     Rating skipped                              Intensity null; the chart uses hollow middle-
+                                                 height bars; averages ignore it; "{n} not rated"
+                                                 in the subtitle
+
+     Only 1–3 contractions                       Stats show —; the pattern line is hidden;
+                                                 charts render what exists without trend lines
+
+     Storage full / write fails                  Keep the UI state, retry the write 3×, then
+                                                 show a quiet card: "Couldn't save the last tap
+                                                 — free some space, then tap Retry". Never
+                                                 lose the tap from memory while the app is
+                                                 open
+
+     Private browsing / storage unavailable      On launch: "This browser won't keep your
+                                                 data. Open Ebb from your home screen
+                                                 instead." Tracking still works in memory, with
+                                                 a visible "Not saved" pill
+
+      persist() denied                           Silent; the backup nudge on Start becomes
+                                                 more prominent after 3 sessions
+
+     Ebb open in two tabs or windows             A BroadcastChannel keeps them in sync;
+                                                 writes go through a single IndexedDB
+                                                 transaction queue; the last write wins per
+                                                 record
+
+     Wake Lock unsupported (older iOS)           The pill reads "Screen may sleep"; Settings
+                                                 explains how to raise auto-lock time
+
+
+
+
+                                                                                            Page 39 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+     Case                                            Required behaviour
+
+     Phone call or other app in foreground           Nothing happens; timers recompute from
+                                                     timestamps on return
+
+     Restore a backup that overlaps existing         Merge by id ; on conflict keep the newer
+     data                                             updatedAt ; show the counts added and
+                                                     skipped
+
+     Corrupt or wrong-version backup                 Reject with "This file isn't an Ebb backup";
+                                                     change nothing
+
+     Delete all data                                 Typed confirmation; clears IndexedDB and
+                                                     caches the user data only; returns to
+                                                     Welcome
+
+     Very long session (24 h, 300+ contractions)     Charts stay at 60 fps; the log is virtualised;
+                                                     computations stay under 16 ms (memoise per
+                                                     session)
+
+     Reduced motion                                  No breathing glow, no slide-ins (fade only),
+                                                     no fill animation on hold-to-end (a text
+                                                     countdown instead)
+
+     Large text (200 % zoom / Dynamic Type)          Layout reflows; the stat cards stack; the hero
+                                                     button keeps at least 200 px height and
+                                                     scrolls if needed
+
+     Landscape on phone                              Supported: the hero button on the left half,
+                                                     stats and timeline on the right
+
+
+
+
+  Accessibility, PWA and performance
+
+  Accessibility (WCAG 2.2 AA)
+       All text is at least 4.5:1 against its background. Pastel fills always carry --ink text.
+       Use real elements: <button> , <a> , <input> , <label> , <table> with <th scope> .
+       Toggles are role="switch" with aria-checked ; the strength picker is a radiogroup .
+       The hero button's accessible name includes state and time, e.g. "Start contraction. 3
+       minutes 42 seconds since the last one started". An aria-live="polite" region
+       announces "Contraction started" and "Contraction ended, lasted 58 seconds".
+
+
+
+
+                                                                                               Page 40 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+       Charts have role="img" with a sentence summary, plus the log table as the
+       accessible equivalent.
+       Intensity and series are never encoded by colour alone; size, height, fill style or dashes
+       always back them up.
+       Respect prefers-reduced-motion and prefers-contrast: more (raise --text-
+       muted to #D6D0E8).
+       Focus rings are 3 px lavender with a 2 px offset and visible on keyboard focus only.
+
+
+  PWA
+       Manifest: name "Ebb — Contraction Timer", short_name "Ebb", display:
+       standalone , orientation: any , background_color and theme_color #1B1929. Icons
+       at 192, 512 and maskable 512, plus an Apple touch icon at 180.
+       Meta: apple-mobile-web-app-capable , apple-mobile-web-app-status-bar-style:
+       black-translucent , and viewport-fit=cover , with safe-area insets padding the top
+       and bottom.
+       Service worker: precache everything at install; the app works in airplane mode after
+       the first load (Lighthouse PWA installable and offline checks pass).
+       Privacy: zero network requests after install (verify with a test that fails on any fetch ).
+       No analytics or crash reporting in v1.
+
+
+  Performance budgets
+       First paint under 500 ms on cached reopen (mid-range Android); interactive under 1 s.
+       JS under 120 kB gzipped, excluding the PDF library, which is lazy-loaded only on export.
+       A tap's visual response under 100 ms; DB commit under 50 ms at the 95th percentile.
+       Battery: with the screen awake for 8 h, no animation besides the 1 Hz timer and the
+       optional glow, which uses CSS only and pauses when hidden.
+
+
+  Stack, architecture and build order
+  Use Vite + React + TypeScript + Zustand, with Dexie over IndexedDB, and ship it as a
+  static PWA with no backend.
+
+
+     Concern            Choice                             Why
+
+     Build              Vite, TypeScript strict            Fast, static output
+
+
+
+                                                                                            Page 41 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+     Concern            Choice                                  Why
+
+     UI                 React 18, CSS Modules + a tokens.css    Tokens map 1:1 to this spec
+                        of custom properties
+
+     State              Zustand store derived from Dexie live   The DB is the source of truth; the
+                        queries                                 store only caches
+
+     Storage            Dexie 4 (IndexedDB)                     Indexes, transactions, migrations
+
+     PWA                 vite-plugin-pwa (Workbox               Precache and controlled updates
+                         generateSW , registerType:
+                        'prompt' )
+
+     Charts             Hand-rolled SVG components + d3-scale   Small, themable, accessible; pinch-
+                        / d3-array only                         zoom via pointer events
+
+     Font                @fontsource/nunito 600/700/800/900,    Self-hosted, precached
+                        latin subset
+
+     Icons               lucide-react                           Rounded strokes
+
+     PDF                 jspdf + svg2pdf.js , dynamically       Off the main bundle
+                        imported
+
+     Tests              Vitest + fake-indexeddb (unit),         Covers the ACs and journeys
+                        Playwright with WebKit and Chromium
+                        mobile emulation (E2E)
+
+
+
+  Module layout
+          src/db/ : the Dexie schema, migrations, repositories (sessions, contractions, events,
+       settings) and the undo log.
+          src/domain/ : pure functions (intervals, rolling averages, CV, slopes, gaps, threshold
+       evaluation, formatting, summary text). 100 % unit-tested; no DOM.
+          src/app/ : the router (hash), lifecycle (landing rules, wake lock, visibility) and service-
+       worker update handling.
+          src/screens/ : Live, Start, History, SessionDetail, Compare, Settings, Welcome.
+
+          src/components/ : HeroButton, StatCard, StrengthPicker, Sheet, Toast, Switch,
+       Segmented, HoldToConfirm.
+          src/charts/ : Timeline, TrendChart, FrequencyBars, Sparkline.
+
+
+
+
+                                                                                                 Page 42 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+  Build order (each milestone ends green on its ACs)
+   1. Foundations: tokens, Nunito, the app shell, manifest, service worker, Dexie schema,
+      hash router, Welcome. Offline test passes.
+   2. Live core: Start → session → HeroButton toggle, timers from timestamps, persist-
+       before-render, resume after reload, debounce. LT-01–04, LT-11.
+   3. Live info: domain metrics, stat cards, averages, pattern line, mini timeline, wake lock
+       pill. LT-05–07, LT-09.
+   4. Corrections: StrengthPicker, Undo / Started by mistake, Event sheet, hold-to-end. LT-
+      08, LT-10, LT-12, LT-14, LT-16.
+   5. Looking back: History, Session detail with all charts, editing, add missed, notes. HI, SD.
+   6. Thresholds and settings: threshold engine + banner, Settings. LT-15, SE.
+   7. Sharing and data: summary text, CSV, PDF, backup/restore, delete all. SH, SE-04.
+   8. Compare and the remaining edge cases (stale contraction, paused, multi-tab, storage
+      errors).
+   9. Polish: accessibility audit (axe + VoiceOver pass), reduced motion, large text,
+       landscape, performance budgets.
+
+
+  Definition of done
+       Every AC and journey has a passing test. The seven journeys run as Playwright specs
+       on iPhone 13 (WebKit) and Pixel 7 (Chromium) emulation.
+       The visuals match the screenshots side by side at 390 × 844 (Nunito rendering differs
+       slightly from the screenshots, as noted).
+       Lighthouse: PWA installable, Accessibility at least 95, Performance at least 90.
+       Airplane-mode test: install, go offline, kill the app, reopen and run J1.
+
+
+  Decisions taken and open questions
+
+     Question from the brief                     Decision for v1
+
+     Partner sync                                One device. Reserve the header pill slot (where
+                                                 "Screen stays on" sits) for a future "Shared
+                                                 session" indicator
+
+     Intensity scale                             Five words by default, stored as 2/4/6/8/10; 1–10 and
+                                                 Both are available in Settings
+
+
+
+
+                                                                                                         Page 43 of 44
+Ebb — Contraction Tracker: Implementation Spec
+
+
+
+
+     Question from the brief                     Decision for v1
+
+     Breathing visual                            Yes, as the 8 s glow behind the contraction button;
+                                                 on by default, off under reduced motion
+
+     Name and identity                           Working name "Ebb", lowercase wordmark in
+                                                 Nunito 900, lavender on Dusk
+
+     Light mode                                  Optional "Day" theme. Not drawn yet: derive it by
+                                                 swapping the grounds to #F7F4FB / #FFFFFF /
+                                                 #EEE8F7 with --ink text, keeping the same
+                                                 pastels at 100 % for fills
+
+
+  Still open:
+
+       Final name and app icon
+       Draw the Day theme screens before milestone 9
+       Whether to localise (US 12-hour times, "OB/provider" wording) in v1 or later
+
+
+
+
+                                                                                                       Page 44 of 44
+
