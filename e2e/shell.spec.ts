@@ -54,3 +54,23 @@ test('seed, read and clear helpers round-trip through the app database', async (
   await clearDb(page);
   expect((await readDb(page)).contractions).toEqual([]);
 });
+
+test.describe('prefers-contrast: more keeps --text-muted legible on every palette', () => {
+  const muted = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim().toLowerCase());
+  const cases = [
+    { theme: 'night', colorScheme: 'dark', expected: '#d6d0e8' },
+    { theme: 'night', colorScheme: 'light', expected: '#d6d0e8' },
+    { theme: 'day', colorScheme: 'dark', expected: '#3a3450' },
+    { theme: 'system', colorScheme: 'dark', expected: '#d6d0e8' },
+    { theme: 'system', colorScheme: 'light', expected: '#3a3450' },
+  ] as const;
+  for (const c of cases) {
+    test(`${c.theme} theme, ${c.colorScheme} OS`, async ({ page }) => {
+      await page.emulateMedia({ contrast: 'more', colorScheme: c.colorScheme });
+      await page.goto('/');
+      await page.evaluate((t) => (document.documentElement.dataset.theme = t), c.theme);
+      expect(await muted(page)).toBe(c.expected);
+    });
+  }
+});
