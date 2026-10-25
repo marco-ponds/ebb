@@ -4,16 +4,13 @@
  * slot while contracting; the action row shows in both states; while `useRatingActive` is true the stat cards, averages,
  * pattern line, mini timeline and end slot are hidden.
  */
-import { useEffect, useRef } from 'react';
-import { HoldToConfirm, StrengthPicker } from '../../components';
+import { useEffect } from 'react';
+import { HoldToConfirm, StrengthPicker, showToast } from '../../components';
 import { rateContraction } from '../../db/contractions';
 import type { Contraction, EbbEvent, Session, Settings } from '../../db/types';
 import { formatDuration } from '../../domain/format';
 import { ActionRow } from './ActionRow';
-import { ratingOpenedAt, setRatingFor, useRatingFor } from './rating';
-
-/** A contraction that ended longer ago than this when the card opened was never "just now" (e.g. stale state catching up). */
-const JUST_ENDED_MS = 10_000;
+import { DIDNT_SAVE, setRatingFor, useRatingFor } from './rating';
 
 export interface LiveSlotContext {
   session: Session;
@@ -29,18 +26,15 @@ export interface LiveSlotContext {
 /** The finished contraction the card is open for, if it still exists. */
 function ratingTarget(ctx: LiveSlotContext, id: string | null): Contraction | null {
   if (id === null || ctx.activeContraction) return null;
-  return ctx.contractions.find((c) => c.id === id && c.endAt !== null && c.endAt >= ratingOpenedAt() - JUST_ENDED_MS) ?? null;
+  return ctx.contractions.find((c) => c.id === id && c.endAt !== null) ?? null;
 }
 
-/** True while the strength picker is open (screenshot 03 layout). Opens when the active contraction ends. */
+/** True while the strength picker is open (screenshot 03 layout). A stop in this view opens it; a new contraction closes it. */
 export function useRatingActive(ctx: LiveSlotContext): boolean {
   const id = useRatingFor();
-  const previous = useRef<string | null>(ctx.activeContraction?.id ?? null);
   const activeId = ctx.activeContraction?.id ?? null;
   useEffect(() => {
-    if (activeId !== null) setRatingFor(null); // a new contraction closes the card at once
-    else if (previous.current !== null) setRatingFor(previous.current); // one just ended (or was discarded: no row, no card)
-    previous.current = activeId;
+    if (activeId !== null) setRatingFor(null);
   }, [activeId]);
   useEffect(() => () => setRatingFor(null), []);
   return ratingTarget(ctx, id) !== null;
@@ -58,7 +52,7 @@ export function RatingSlot(ctx: LiveSlotContext) {
       durationLabel={formatDuration(target.endAt - target.startAt)}
       onChoose={(value) => {
         close();
-        void rateContraction(target.id, value);
+        rateContraction(target.id, value).catch(() => showToast({ message: DIDNT_SAVE }));
       }}
       onSkip={close}
       onAutoClose={close}

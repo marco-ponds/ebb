@@ -3,6 +3,7 @@ import { Button, Sheet, TimeField } from '../../components';
 import { addEvent } from '../../db/events';
 import type { EbbEvent, EventType, WatersDetail } from '../../db/types';
 import { EVENT_LABELS, GENTLE_PROMPT, WATERS_OPTIONS, eventConfirmation, needsGentlePrompt } from '../../domain/events';
+import { DIDNT_SAVE } from './rating';
 import styles from './Live.module.css';
 
 const TYPES: EventType[] = ['waters', 'bleeding', 'reduced-movement', 'called-midwife', 'went-to-hospital', 'note'];
@@ -58,6 +59,7 @@ function EventForm({ sessionId, onClose }: { sessionId: string; onClose: () => v
   const [at, setAt] = useState(reference);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [saved, setSaved] = useState<EbbEvent | null>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
 
@@ -85,12 +87,18 @@ function EventForm({ sessionId, onClose }: { sessionId: string; onClose: () => v
   const save = () => {
     if (!type || saving) return;
     setSaving(true);
+    setFailed(false);
     void addEvent(sessionId, {
       type,
       at,
       details: type === 'waters' ? details : null,
       note: note.trim() || null,
-    }).then(setSaved);
+    })
+      .then(setSaved)
+      .catch(() => {
+        setSaving(false);
+        setFailed(true);
+      });
   };
 
   return (
@@ -108,6 +116,11 @@ function EventForm({ sessionId, onClose }: { sessionId: string; onClose: () => v
         <span className={styles.noteLabel}>Note (optional)</span>
         <input type="text" className={styles.noteInput} value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" />
       </label>
+      {failed ? (
+        <p role="status" className={styles.gentle}>
+          {DIDNT_SAVE}
+        </p>
+      ) : null}
       <Button type="submit" variant="primary" disabled={!type || saving}>
         Save
       </Button>

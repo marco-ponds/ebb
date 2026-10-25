@@ -5,6 +5,7 @@ import { discardContraction } from '../../db/contractions';
 import { undoLast } from '../../db/undo';
 import { summaryText } from '../../domain/summary';
 import { useUndoAvailable } from '../../state/hooks';
+import { DIDNT_SAVE } from './rating';
 import { EventSheet } from './EventSheet';
 import styles from './Live.module.css';
 import type { LiveSlotContext } from './slots';
@@ -18,16 +19,18 @@ export function ActionRow(ctx: LiveSlotContext) {
 
   const undo = () => {
     if (!undoAvailable) return;
-    void undoLast().then((kind) => {
-      if (kind) showToast({ message: 'Undone', durationMs: 3000 });
-    });
+    undoLast()
+      .then((kind) => {
+        if (kind) showToast({ message: 'Undone', durationMs: 3000 });
+      })
+      .catch(() => showToast({ message: DIDNT_SAVE }));
   };
 
   return (
     <>
       <div className={styles.actionRow} data-contracting={activeContraction ? 'true' : 'false'}>
         {activeContraction ? (
-          <Button variant="secondary" className={styles.action} onClick={() => void discardContraction(activeContraction.id)}>
+          <Button variant="secondary" className={styles.action} onClick={() => discardContraction(activeContraction.id).catch(() => showToast({ message: DIDNT_SAVE }))}>
             <Undo2 size={22} strokeWidth={2.2} aria-hidden="true" />
             Started by mistake
           </Button>

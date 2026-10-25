@@ -1,8 +1,9 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastHost } from '../../components';
-import { startContraction, stopContraction } from '../../db/contractions';
+import { rateContraction, startContraction, stopContraction } from '../../db/contractions';
+import { addEvent } from '../../db/events';
 import { setRetryDelays } from '../../db/queue';
 import { getDb } from '../../db/schema';
 import { startSession } from '../../db/sessions';
@@ -12,6 +13,15 @@ import type { Session } from '../../db/types';
 import { GENTLE_PROMPT } from '../../domain/events';
 import { initStore, teardownStore, useAppStore } from '../../state/store';
 import { LiveScreen } from '.';
+
+vi.mock('../../db/events', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../db/events')>();
+  return { ...real, addEvent: vi.fn(real.addEvent) };
+});
+vi.mock('../../db/contractions', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../db/contractions')>();
+  return { ...real, rateContraction: vi.fn(real.rateContraction) };
+});
 
 const MIN = 60_000;
 const hero = () => screen.getByTestId('hero');
@@ -100,6 +110,62 @@ describe('strength picker (LT-08)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Started by mistake' }));
     await waitFor(() => expect(hero()).toHaveAttribute('data-state', 'resting'));
     expect(screen.queryByRole('radiogroup', { name: 'How strong was that one?' })).not.toBeInTheDocument();
+  });
+});
+
+describe('when the strength card opens', () => {
+  it('never opens for contractions that were already finished', async () => {
+    const s = await startSession(Date.now() - 20 * MIN);
+    await waitFor(() => expect(useAppStore.getState().activeSession?.id).toBe(s.id));
+    const c = await startContraction(s.id, Date.now() - 5 * MIN);
+    await stopContraction(c.id, Date.now() - 4 * MIN);
+    render(<LiveScreen />);
+    await screen.findByText('Time apart');
+    expect(screen.queryByRole('radiogroup', { name: 'How strong was that one?' })).not.toBeInTheDocument();
+  });
+
+  it('does not open for a stop made outside this view (another window)', async () => {
+    const s = await openLive();
+    const c = await startContraction(s.id, Date.now() - 2000);
+    await waitFor(() => expect(hero()).toHaveAttribute('data-state', 'contracting'));
+    await stopContraction(c.id, Date.now());
+    await waitFor(() => expect(hero()).toHaveAttribute('data-state', 'resting'));
+    expect(screen.queryByRole('radiogroup', { name: 'How strong was that one?' })).not.toBeInTheDocument();
+  });
+
+  it('opens after "Ended earlier" saves a stop', async () => {
+    const s = await startSession(Date.now() - 30 * MIN);
+    await waitFor(() => expect(useAppStore.getState().activeSession?.id).toBe(s.id));
+    await startContraction(s.id, Date.now() - 8 * MIN);
+    render(<LiveScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ended earlier…' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('radiogroup', { name: 'How strong was that one?' })).toBeInTheDocument();
+  });
+});
+
+describe('refused writes stay quiet and recoverable', () => {
+  it('a failed rating shows a quiet toast and raises no unhandled rejection', async () => {
+    await openLive();
+    await tapOnce();
+    vi.mocked(rateContraction).mockRejectedValueOnce(new Error('gone'));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Mild' }));
+    expect(await screen.findByText("That didn't save — try again.")).toBeInTheDocument();
+  });
+
+  it('a failed event save re-enables Save, says so, and keeps what was typed', async () => {
+    await openLive();
+    await userEvent.click(screen.getByRole('button', { name: 'Event' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add an event' });
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Note' }));
+    await userEvent.type(within(dialog).getByLabelText('Note (optional)'), 'had a bath');
+    vi.mocked(addEvent).mockRejectedValueOnce(new Error('locked'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByText("That didn't save — try again.")).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(within(dialog).getByLabelText('Note (optional)')).toHaveValue('had a bath');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByText(/^Saved · Note, \d\d:\d\d$/)).toBeInTheDocument();
   });
 });
 

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Button, Sheet, TimeField } from '../../components';
 import { clearConflicts, retryPendingWrites } from '../../db/queue';
 import { stopContraction } from '../../db/contractions';
+import { setRatingFor } from './rating';
 import type { StorageStatus } from '../../db/queue';
 import type { Contraction } from '../../db/types';
 import { formatDuration } from '../../domain/format';
@@ -97,7 +98,10 @@ function EndedEarlierSheet({ open, onClose, active, now }: { open: boolean; onCl
         <Button
           variant="primary"
           onClick={() => {
-            void stopContraction(active.id, end).then(onClose);
+            void stopContraction(active.id, end).then((c) => {
+              setRatingFor(c.id);
+              onClose();
+            });
           }}
         >
           Save
