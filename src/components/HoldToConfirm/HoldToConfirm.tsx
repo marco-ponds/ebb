@@ -9,12 +9,16 @@ export interface HoldToConfirmProps {
 }
 
 const STEP_MS = 500;
+const INSET = 2; // half the 4 px ring stroke
+const RADIUS = 20; // matches --radius-button
 const isHoldKey = (key: string) => key === ' ' || key === 'Enter';
 
 export function HoldToConfirm({ label, durationMs = 1500, onConfirm }: HoldToConfirmProps) {
   const reducedMotion = useReducedMotion();
   const [holding, setHolding] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [size, setSize] = useState({ w: 300, h: 48 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmRef = useRef(onConfirm);
   useEffect(() => {
@@ -41,6 +45,21 @@ export function HoldToConfirm({ label, durationMs = 1500, onConfirm }: HoldToCon
   }, [durationMs]);
 
   useEffect(() => cancel, [cancel]);
+
+  // The ring is drawn in real pixels so its corners follow the button's rounded border.
+  useEffect(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Under reduced motion there is no fill, so the text counts down instead.
   useEffect(() => {
@@ -70,6 +89,7 @@ export function HoldToConfirm({ label, durationMs = 1500, onConfirm }: HoldToCon
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       className={styles.button}
       data-holding={holding ? 'true' : 'false'}
@@ -89,16 +109,16 @@ export function HoldToConfirm({ label, durationMs = 1500, onConfirm }: HoldToCon
           aria-hidden="true"
           focusable="false"
           data-fill
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
+          width={size.w}
+          height={size.h}
+          viewBox={`0 0 ${size.w} ${size.h}`}
         >
           <rect
-            x="2"
-            y="2"
-            width="96"
-            height="96"
-            rx="18"
-            vectorEffect="non-scaling-stroke"
+            x={INSET}
+            y={INSET}
+            width={Math.max(0, size.w - 2 * INSET)}
+            height={Math.max(0, size.h - 2 * INSET)}
+            rx={RADIUS - INSET}
             pathLength="1"
             strokeDasharray="1"
             strokeDashoffset={holding ? 0 : 1}

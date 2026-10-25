@@ -132,6 +132,22 @@ describe('HoldToConfirm', () => {
     }
   });
 
+  it('sizes the ring to the measured button with a pixel radius and no stretching', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0, top: 0, width: 280, height: 56, right: 280, bottom: 56, x: 0, y: 0, toJSON: () => ({}),
+    });
+    render(<HoldToConfirm label="Hold" onConfirm={() => {}} />);
+    const svg = btn().querySelector('[data-fill]')!;
+    const rect = svg.querySelector('rect')!;
+    expect(svg.getAttribute('viewBox')).toBe('0 0 280 56');
+    expect(svg.getAttribute('preserveAspectRatio')).toBeNull();
+    expect(rect.getAttribute('vector-effect')).toBeNull();
+    expect(rect.getAttribute('width')).toBe('276');
+    expect(rect.getAttribute('height')).toBe('52');
+    expect(rect.getAttribute('rx')).toBe('18');
+    vi.restoreAllMocks();
+  });
+
   it('under reduced motion: no fill, text counts down 1.5 > 1.0 > 0.5 s', () => {
     stubMotion(true);
     render(<HoldToConfirm label="Hold to end" onConfirm={() => {}} />);
