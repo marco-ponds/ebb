@@ -176,16 +176,26 @@ function normalise(backup: Backup): { sessions: Session[]; contractions: Contrac
   return { sessions, contractions, events: backup.events, dropped };
 }
 
-export async function snapshotToBackupsCache(reason: string): Promise<void> {
-  if (typeof caches === 'undefined') return;
+/** Saves a copy of the current data; resolves false when the Cache API is unavailable and nothing was saved. */
+export async function snapshotToBackupsCache(reason: string): Promise<boolean> {
+  if (typeof caches === 'undefined') return false;
   const now = Date.now();
   const json = JSON.stringify(await buildBackup(now));
   const cache = await caches.open(BACKUP_CACHE);
   await cache.put(`/backups/${new Date(now).toISOString()}-${reason}.json`, new Response(json, { headers: { 'Content-Type': 'application/json' } }));
+  return true;
 }
 
-export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promise<{ added: number; skipped: number }> {
+export interface RestoreResult {
+  added: number;
+  skipped: number;
+  /** Replace only: a copy of the previous data was written to the backups cache first. */
+  snapshotSaved: boolean;
+}
+
+export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promise<RestoreResult> {
   const incoming = normalise(backup);
+  let snapshotSaved = false;
   const requireIdle = async () => {
     if (await findActiveSession()) throw new InvariantError('Restore is not available during an active session');
   };
@@ -194,7 +204,7 @@ export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promis
       // Checked inside the transaction: a session started by this or another tab can no longer slip in before the swap.
       await requireIdle();
       const db = getDb();
-      const result = { added: 0, skipped: incoming.dropped };
+      const result: RestoreResult = { added: 0, skipped: incoming.dropped, snapshotSaved };
       if (mode === 'replace') {
         const device = await db.settings.get('singleton');
         await Promise.all([db.sessions.clear(), db.contractions.clear(), db.events.clear(), db.undo.clear()]);
@@ -228,7 +238,7 @@ export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promis
       // Not a tap: if storage fails this rejects instead of pretending. The safety snapshot is taken inside the queue,
       // right before the swap, after earlier writes were flushed.
       parkable: false,
-      before: mode === 'replace' ? async () => { await requireIdle(); await snapshotToBackupsCache('before-replace'); } : undefined,
+      before: mode === 'replace' ? async () => { await requireIdle(); snapshotSaved = await snapshotToBackupsCache('before-replace'); } : undefined,
     },
   );
 }
