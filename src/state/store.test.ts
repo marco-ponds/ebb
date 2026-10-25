@@ -42,7 +42,7 @@ describe('initStore', () => {
 
   it('falls back to an in-memory database when open() fails, and still sets data-db-ready', async () => {
     const broken = createDb();
-    vi.spyOn(broken, 'open').mockRejectedValue(new Error('SecurityError: storage unavailable'));
+    vi.spyOn(broken, 'open').mockRejectedValue(Object.assign(new Error('storage unavailable'), { name: 'SecurityError' }));
     setDb(broken);
     await initStore();
     expect(getDb()).not.toBe(broken);
@@ -57,13 +57,37 @@ describe('initStore', () => {
 
   it('still sets data-db-ready when even the fallback cannot start', async () => {
     const broken = createDb();
-    vi.spyOn(broken, 'open').mockRejectedValue(new Error('nope'));
+    vi.spyOn(broken, 'open').mockRejectedValue(Object.assign(new Error('nope'), { name: 'InvalidStateError' }));
     setDb(broken);
     vi.spyOn(await import('../db/sync'), 'startSync').mockImplementation(() => {
       throw new Error('late failure');
     });
     await expect(initStore()).rejects.toThrow('late failure');
     expect(document.documentElement.dataset.dbReady).toBe('1');
+  });
+});
+
+describe('open failures that are not "storage unavailable"', () => {
+  it.each(['VersionError', 'DatabaseClosedError', 'AbortError'])('%s surfaces instead of silently switching to memory', async (name) => {
+    const broken = createDb();
+    vi.spyOn(broken, 'open').mockRejectedValue(Object.assign(new Error('boom'), { name }));
+    setDb(broken);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(initStore()).rejects.toThrow('boom');
+    expect(log).toHaveBeenCalled();
+    expect(getDb()).toBe(broken);
+    expect(state().storage.status).toBe('ok');
+    expect(document.documentElement.dataset.dbReady).toBe('1');
+  });
+
+  it('recognises Dexie-wrapped storage errors', async () => {
+    const wrapped = Object.assign(new Error('open failed'), { name: 'OpenFailedError', inner: { name: 'SecurityError' } });
+    const broken = createDb();
+    vi.spyOn(broken, 'open').mockRejectedValue(wrapped);
+    setDb(broken);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await initStore();
+    expect(state().storage.status).toBe('memory');
   });
 });
 
@@ -132,5 +156,21 @@ describe('store follows the database', () => {
     await vi.waitFor(() => expect(state().activeContraction?.id).toBe(c.id));
     expect(await getDb().contractions.count()).toBe(1);
     expect(getQueueSnapshot().overlay).toEqual([]);
+  });
+
+  it('undo availability follows a parked action, not the stale committed one', async () => {
+    setRetryDelays([0, 0, 0]);
+    const s = await startSession(1000);
+    const first = await startContraction(s.id, 2000);
+    await stopContraction(first.id, 3000);
+    await initStore();
+    expect(state().undo?.kind).toBe('stop');
+    const put = vi.spyOn(getDb().contractions, 'put').mockRejectedValue(new Error('full'));
+    const second = await startContraction(s.id, 5000);
+    expect(state().undo?.kind).toBe('start');
+    expect(state().activeContraction?.id).toBe(second.id);
+    await stopContraction(second.id, 6000);
+    expect(state().activeContraction).toBeNull();
+    put.mockRestore();
   });
 });

@@ -1,8 +1,8 @@
 import { DEFAULT_SETTINGS } from './defaults';
 import { InvariantError } from './errors';
-import { intend, runWrite } from './queue';
+import { runWrite } from './queue';
+import { findActiveSession, getSettingsRow, rowsOf } from './reads';
 import { getDb } from './schema';
-import { findActiveSession } from './sessions';
 import { updateSettings } from './settings';
 import type { Contraction, EbbEvent, Session, Settings } from './types';
 
@@ -24,20 +24,19 @@ export type ParsedBackup =
   | { ok: false; error: typeof NOT_A_BACKUP };
 
 export async function buildBackup(now: number): Promise<Backup> {
-  const db = getDb();
   const [sessions, contractions, events, settings] = await Promise.all([
-    db.sessions.toArray(),
-    db.contractions.filter((c) => c.deletedAt === null).toArray(),
-    db.events.filter((e) => e.deletedAt === null).toArray(),
-    db.settings.get('singleton'),
+    rowsOf('sessions'),
+    rowsOf('contractions'),
+    rowsOf('events'),
+    getSettingsRow(),
   ]);
   return {
     app: 'ebb',
     schema: 1,
     exportedAt: now,
     sessions,
-    contractions,
-    events,
+    contractions: contractions.filter((c) => c.deletedAt === null),
+    events: events.filter((e) => e.deletedAt === null),
     settings: settings ?? structuredClone(DEFAULT_SETTINGS),
   };
 }
@@ -180,50 +179,64 @@ export async function snapshotToBackupsCache(reason: string): Promise<void> {
   await cache.put(`/backups/${new Date(now).toISOString()}-${reason}.json`, new Response(json, { headers: { 'Content-Type': 'application/json' } }));
 }
 
-export async function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promise<{ added: number; skipped: number }> {
-  if (await findActiveSession()) throw new InvariantError('Restore is not available during an active session');
+export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promise<{ added: number; skipped: number }> {
   const incoming = normalise(backup);
-  if (mode === 'replace') await snapshotToBackupsCache('before-replace');
-  return runWrite(async () => {
-    const db = getDb();
-    const result = { added: 0, skipped: incoming.dropped };
-    intend(result);
-    if (mode === 'replace') {
-      const device = await db.settings.get('singleton');
-      await Promise.all([db.sessions.clear(), db.contractions.clear(), db.events.clear(), db.undo.clear()]);
-      await db.sessions.bulkPut(incoming.sessions);
-      await db.contractions.bulkPut(incoming.contractions);
-      await db.events.bulkPut(incoming.events);
-      await db.settings.put({ ...backup.settings, onboardedAt: device?.onboardedAt ?? null }, 'singleton');
-      result.added = incoming.sessions.length + incoming.contractions.length + incoming.events.length;
+  const requireIdle = async () => {
+    if (await findActiveSession()) throw new InvariantError('Restore is not available during an active session');
+  };
+  return runWrite(
+    async () => {
+      // Checked inside the transaction: a session started by this or another tab can no longer slip in before the swap.
+      await requireIdle();
+      const db = getDb();
+      const result = { added: 0, skipped: incoming.dropped };
+      if (mode === 'replace') {
+        const device = await db.settings.get('singleton');
+        await Promise.all([db.sessions.clear(), db.contractions.clear(), db.events.clear(), db.undo.clear()]);
+        await db.sessions.bulkPut(incoming.sessions);
+        await db.contractions.bulkPut(incoming.contractions);
+        await db.events.bulkPut(incoming.events);
+        await db.settings.put({ ...backup.settings, onboardedAt: device?.onboardedAt ?? null }, 'singleton');
+        result.added = incoming.sessions.length + incoming.contractions.length + incoming.events.length;
+        return result;
+      }
+      for (const [table, rows] of [
+        [db.sessions, incoming.sessions],
+        [db.contractions, incoming.contractions],
+        [db.events, incoming.events],
+      ] as const) {
+        const existing = new Map<string, { updatedAt: number }>();
+        for (const e of await (table as typeof db.sessions).bulkGet(rows.map((r) => r.id))) if (e) existing.set(e.id, e);
+        const toWrite = rows.filter((r) => {
+          const found = existing.get(r.id);
+          return !found || r.updatedAt > found.updatedAt;
+        });
+        result.skipped += rows.length - toWrite.length;
+        result.added += toWrite.length;
+        await (table as typeof db.sessions).bulkPut(toWrite as Session[]);
+      }
+      await db.undo.clear();
       return result;
-    }
-    for (const [table, rows] of [
-      [db.sessions, incoming.sessions],
-      [db.contractions, incoming.contractions],
-      [db.events, incoming.events],
-    ] as const) {
-      const existing = new Map<string, { updatedAt: number }>();
-      for (const e of await (table as typeof db.sessions).bulkGet(rows.map((r) => r.id))) if (e) existing.set(e.id, e);
-      const toWrite = rows.filter((r) => {
-        const found = existing.get(r.id);
-        return !found || r.updatedAt > found.updatedAt;
-      });
-      result.skipped += rows.length - toWrite.length;
-      result.added += toWrite.length;
-      await (table as typeof db.sessions).bulkPut(toWrite as Session[]);
-    }
-    await db.undo.clear();
-    return result;
-  });
+    },
+    [],
+    {
+      // Not a tap: if storage fails this rejects instead of pretending. The safety snapshot is taken inside the queue,
+      // right before the swap, after earlier writes were flushed.
+      parkable: false,
+      before: mode === 'replace' ? async () => { await requireIdle(); await snapshotToBackupsCache('before-replace'); } : undefined,
+    },
+  );
 }
 
 export async function deleteAllData(): Promise<void> {
-  await runWrite(async () => {
-    const db = getDb();
-    intend(undefined);
-    await Promise.all([db.sessions.clear(), db.contractions.clear(), db.events.clear(), db.settings.clear(), db.undo.clear()]);
-  });
-  // Only the user's backups: the Workbox precache must survive so the app still opens offline.
+  await runWrite(
+    async () => {
+      const db = getDb();
+      await Promise.all([db.sessions.clear(), db.contractions.clear(), db.events.clear(), db.settings.clear(), db.undo.clear()]);
+    },
+    [],
+    { parkable: false },
+  );
+  // Only reached once the clear committed. Only the user's backups: the Workbox precache must survive so the app opens offline.
   if (typeof caches !== 'undefined') await caches.delete(BACKUP_CACHE);
 }

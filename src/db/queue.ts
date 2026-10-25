@@ -1,15 +1,16 @@
 import { isDomainError } from './errors';
-import { getDb } from './schema';
+import { getDb, type EbbDB } from './schema';
 import { notifyChanged } from './sync';
-import type { Contraction, EbbEvent, Session, Settings, TableName } from './types';
+import type { Contraction, EbbEvent, Session, Settings, UndoEntry } from './types';
 
 export type StorageStatus = 'ok' | 'failing' | 'memory';
+export type OverlayTable = 'sessions' | 'contractions' | 'events' | 'settings' | 'undo';
 
 /** A row the UI should show although the database has not accepted it yet (`value: null` = the row is gone). */
 export interface OverlayRecord {
-  table: TableName | 'settings';
+  table: OverlayTable;
   id: string;
-  value: Session | Contraction | EbbEvent | Settings | null;
+  value: Session | Contraction | EbbEvent | Settings | UndoEntry | null;
 }
 
 export interface QueueSnapshot {
@@ -18,16 +19,29 @@ export interface QueueSnapshot {
   overlay: readonly OverlayRecord[];
 }
 
+export interface RunWriteOptions {
+  /** Default true. Bulk operations (restore, delete all) are not taps: on storage failure they reject instead of parking. */
+  parkable?: boolean;
+  /** Runs inside the queue, outside the transaction, just before the write (e.g. to snapshot to Cache Storage). */
+  before?: () => Promise<void>;
+}
+
 interface WriteContext {
-  overlay: OverlayRecord[];
-  hasIntent: boolean;
-  value: unknown;
+  seed: OverlayRecord[];
+  /** Every row this op wrote (or, in plan mode, would write), in order. These are what gets parked on failure. */
+  writes: OverlayRecord[];
+  /** Plan mode: earlier writes are still parked, so this op only records what it would write. */
+  plan: boolean;
+  storageError: unknown;
+  completed: boolean;
+  result: unknown;
 }
 
 interface PendingWrite {
-  op: () => Promise<unknown>;
-  ctx: WriteContext;
+  writes: OverlayRecord[];
 }
+
+const TABLES = ['sessions', 'contractions', 'events', 'settings', 'undo'] as const;
 
 let retryDelays = [100, 300, 900];
 let chain: Promise<unknown> = Promise.resolve();
@@ -42,7 +56,7 @@ function emit(): void {
   snapshot = {
     status: memoryMode ? 'memory' : failing ? 'failing' : 'ok',
     pendingCount: pending.length,
-    overlay: pending.flatMap((p) => p.ctx.overlay),
+    overlay: pending.flatMap((p) => p.writes),
   };
   for (const l of listeners) l();
 }
@@ -64,22 +78,72 @@ export function setMemoryMode(on: boolean): void {
   emit();
 }
 
+/** Everything the app intends to be true: parked writes, then the writes of the op that is running now. Later wins. */
+export function intendedWrites(table?: OverlayTable): OverlayRecord[] {
+  const all = [...pending.flatMap((p) => p.writes), ...(running?.writes ?? [])];
+  return table ? all.filter((w) => w.table === table) : all;
+}
+
+export function intendedWrite(table: OverlayTable, id: string): OverlayRecord | undefined {
+  const all = intendedWrites(table);
+  for (let i = all.length - 1; i >= 0; i--) if (all[i].id === id) return all[i];
+  return undefined;
+}
+
+async function applyWrite(db: EbbDB, w: OverlayRecord): Promise<void> {
+  const table = db[w.table] as unknown as { put(v: unknown, key?: string): Promise<unknown>; delete(key: string): Promise<void> };
+  if (w.value === null) await table.delete(w.id);
+  else if (w.table === 'settings' || w.table === 'undo') await table.put(w.value, w.id);
+  else await table.put(w.value);
+}
+
 /**
- * Called by an op once it has decided what it will write, before it writes. If storage then keeps failing,
- * the queue resolves the caller with `result` and shows `overlay` to the hooks until a retry commits it.
+ * The only way an op changes a row. It records the write (so a failed commit can park it and show it as an overlay)
+ * and performs it inside the op's transaction. A storage failure is remembered, not thrown, so the op can finish
+ * and hand back its result; the queue then rolls the transaction back and parks the recorded writes.
  */
-export function intend<T>(result: T, overlay: OverlayRecord[] = []): void {
-  if (!running) throw new Error('intend() must be called from inside runWrite');
-  running.hasIntent = true;
-  running.value = result;
-  running.overlay.splice(0, running.overlay.length, ...overlay);
+export async function write(table: OverlayTable, id: string, value: OverlayRecord['value']): Promise<void> {
+  const ctx = running;
+  if (!ctx) throw new Error('write() must be called from inside runWrite');
+  const record: OverlayRecord = { table, id, value };
+  ctx.writes.push(record);
+  if (ctx.plan || ctx.storageError) return;
+  try {
+    await applyWrite(getDb(), record);
+  } catch (e) {
+    if (isDomainError(e)) throw e;
+    ctx.storageError = e;
+  }
 }
 
 async function attempt<T>(op: () => Promise<T>, ctx: WriteContext): Promise<T> {
   const db = getDb();
+  ctx.writes = [...ctx.seed];
+  ctx.storageError = null;
+  ctx.completed = false;
   running = ctx;
   try {
-    return await db.transaction('rw', [db.sessions, db.contractions, db.events, db.settings, db.undo], op);
+    return await db.transaction('rw', TABLES.map((t) => db[t]), async () => {
+      const result = await op();
+      ctx.result = result;
+      ctx.completed = true;
+      if (ctx.storageError) throw ctx.storageError; // roll the whole op back
+      return result;
+    });
+  } finally {
+    running = null;
+  }
+}
+
+async function planOnly<T>(op: () => Promise<T>, ctx: WriteContext): Promise<T> {
+  ctx.writes = [...ctx.seed];
+  ctx.plan = true;
+  running = ctx;
+  try {
+    const result = await op();
+    ctx.result = result;
+    ctx.completed = true;
+    return result;
   } finally {
     running = null;
   }
@@ -98,15 +162,17 @@ async function attemptWithRetries<T>(op: () => Promise<T>, ctx: WriteContext, de
   }
 }
 
-/** Replays pending writes in order. Stops at the first storage failure. */
+/** Replays parked writes in order, one transaction each. Stops at the first storage failure. */
 async function flush(): Promise<boolean> {
   while (pending.length > 0) {
     const next = pending[0];
     try {
-      await attempt(next.op, next.ctx);
-    } catch (e) {
-      // A request that can no longer be honoured (state changed meanwhile) is dropped; storage trouble stops the replay.
-      if (!isDomainError(e)) return false;
+      const db = getDb();
+      await db.transaction('rw', TABLES.map((t) => db[t]), async () => {
+        for (const w of next.writes) await applyWrite(db, w);
+      });
+    } catch {
+      return false;
     }
     pending = pending.slice(1);
     notifyChanged();
@@ -117,30 +183,44 @@ async function flush(): Promise<boolean> {
   return true;
 }
 
-async function execute<T>(op: () => Promise<T>, ctx: WriteContext): Promise<T> {
+async function execute<T>(op: () => Promise<T>, ctx: WriteContext, options: RunWriteOptions): Promise<T> {
+  const parkable = options.parkable ?? true;
   let delays = retryDelays;
-  if (pending.length > 0 && !(await flush())) delays = [];
+  let plan = false;
+  if (pending.length > 0 && !(await flush())) {
+    if (!parkable) throw new Error('Earlier changes are not saved yet. Retry saving them first.');
+    plan = true; // storage is still failing: queue this op behind the parked ones, working from what they intend
+    delays = [];
+  }
+  await options.before?.();
   try {
-    const result = await attemptWithRetries(op, ctx, delays);
-    notifyChanged();
+    const result = plan ? await planOnly(op, ctx) : await attemptWithRetries(op, ctx, delays);
+    if (!plan) notifyChanged();
+    else park(ctx);
     return result;
   } catch (e) {
-    if (isDomainError(e) || !ctx.hasIntent) throw e;
-    pending = [...pending, { op, ctx }];
-    failing = true;
-    emit();
-    return ctx.value as T;
+    if (isDomainError(e) || !parkable || !ctx.completed || plan) throw e;
+    park(ctx);
+    return ctx.result as T;
   }
+}
+
+function park(ctx: WriteContext): void {
+  pending = [...pending, { writes: ctx.writes }];
+  failing = true;
+  emit();
 }
 
 /**
  * The only write path to IndexedDB. Writes run one at a time, each in a Dexie `rw` transaction, and a storage failure
- * is retried 3x (100, 300, 900 ms). After that the op is kept in memory, status becomes 'failing', and the caller still
- * gets the intended result so the UI keeps the tap. Domain errors (see errors.ts) are never retried.
+ * is retried 3x (100, 300, 900 ms). After that the writes are kept in memory, status becomes 'failing', and the caller
+ * still gets the intended result so the UI keeps the tap. Later ops see the parked writes and queue behind them, so a
+ * stop after a parked start works. Domain errors (see errors.ts) are never retried. `overlay` seeds records the op
+ * wants shown in addition to what it passes to `write`.
  */
-export function runWrite<T>(op: () => Promise<T>, overlay: OverlayRecord[] = []): Promise<T> {
-  const ctx: WriteContext = { overlay, hasIntent: false, value: undefined };
-  const result = chain.then(() => execute(op, ctx));
+export function runWrite<T>(op: () => Promise<T>, overlay: OverlayRecord[] = [], options: RunWriteOptions = {}): Promise<T> {
+  const ctx: WriteContext = { seed: overlay, writes: [], plan: false, storageError: null, completed: false, result: undefined };
+  const result = chain.then(() => execute(op, ctx, options));
   chain = result.catch(() => undefined);
   return result;
 }

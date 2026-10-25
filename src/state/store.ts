@@ -52,6 +52,7 @@ function derive(): void {
   const open = mergeOverlay(lastSnapshot.open, queue.overlay, 'contractions').filter(
     (c) => c.endAt === null && c.deletedAt === null && c.sessionId === activeSession?.id,
   );
+  const undoRecord = queue.overlay.filter((o) => o.table === 'undo').slice(-1)[0];
   const [settings] = mergeOverlay(
     [{ id: 'singleton', ...(lastSnapshot.settings ?? DEFAULT_SETTINGS) }],
     queue.overlay,
@@ -62,7 +63,7 @@ function derive(): void {
     activeContraction: open[0] ?? null,
     settings: settings ? stripId(settings) : structuredClone(DEFAULT_SETTINGS),
     storage,
-    undo: lastSnapshot.undo ?? null,
+    undo: undoRecord ? (undoRecord.value as UndoEntry | null) : (lastSnapshot.undo ?? null),
   });
 }
 
@@ -72,10 +73,22 @@ function stripId(s: Settings & { id?: string }): Settings {
   return rest;
 }
 
+/** Errors that mean "this browser won't give us IndexedDB" (private mode, blocked storage), as opposed to a bug or a transient fault. */
+export function isStorageUnavailable(e: unknown): boolean {
+  const names = new Set<string>();
+  for (let cur = e as { name?: string; inner?: unknown } | undefined; cur && names.size < 5; cur = cur.inner as typeof cur) {
+    if (cur.name) names.add(cur.name);
+  }
+  return ['SecurityError', 'InvalidStateError', 'UnknownError', 'MissingAPIError'].some((n) => names.has(n));
+}
+
 async function openWithFallback(): Promise<void> {
   try {
     await getDb().open();
-  } catch {
+  } catch (e) {
+    console.error('Ebb could not open its database', e);
+    // Anything else (version, blocked, transient) must surface: a silent switch to memory would lose the next taps on reload.
+    if (!isStorageUnavailable(e)) throw e;
     // Private mode or storage unavailable: run the same code over an in-memory database.
     // fake-indexeddb is imported lazily so it never reaches the main bundle.
     const { indexedDB, IDBKeyRange } = await import('fake-indexeddb');

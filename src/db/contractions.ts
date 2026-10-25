@@ -1,6 +1,6 @@
 import { InvariantError, OverlapError } from './errors';
-import { intend, runWrite } from './queue';
-import { getDb } from './schema';
+import { runWrite, write } from './queue';
+import { getRow, rowsOf } from './reads';
 import type { Contraction } from './types';
 import { clearUndo, recordUndo } from './undo';
 
@@ -12,7 +12,7 @@ export interface ContractionPatch {
 }
 
 async function requireContraction(id: string): Promise<Contraction> {
-  const row = await getDb().contractions.get(id);
+  const row = await getRow('contractions', id);
   if (!row || row.deletedAt !== null) throw new InvariantError(`No contraction ${id}`);
   return row;
 }
@@ -25,17 +25,16 @@ function checkIntensity(intensity: number | null | undefined): void {
 
 /** Same rule as the domain's findOverlap: finished, non-deleted contractions overlap if each starts before the other ends. */
 async function findOverlapping(sessionId: string, startAt: number, endAt: number, ignoreId?: string): Promise<Contraction | undefined> {
-  const rows = await getDb().contractions.where('sessionId').equals(sessionId).toArray();
+  const rows = await rowsOf('contractions', sessionId);
   return rows.find((c) => c.id !== ignoreId && c.deletedAt === null && c.endAt !== null && startAt < c.endAt && c.startAt < endAt);
 }
 
 export function startContraction(sessionId: string, now: number = Date.now()): Promise<Contraction> {
   const id = crypto.randomUUID(); // chosen once: a retried write must commit the row the overlay showed
   return runWrite(async () => {
-    const db = getDb();
-    const session = await db.sessions.get(sessionId);
+    const session = await getRow('sessions', sessionId);
     if (!session || session.endedAt !== null) throw new InvariantError('Contractions can only start in the active session');
-    const rows = (await db.contractions.where('sessionId').equals(sessionId).toArray()).filter((c) => c.deletedAt === null);
+    const rows = (await rowsOf('contractions', sessionId)).filter((c) => c.deletedAt === null);
     if (rows.some((c) => c.endAt === null)) throw new InvariantError('A contraction is already in progress');
     const latest = rows.reduce<number | null>((max, c) => (max === null || c.startAt > max ? c.startAt : max), null);
     const row: Contraction = {
@@ -50,8 +49,7 @@ export function startContraction(sessionId: string, now: number = Date.now()): P
       reviewed: false,
       updatedAt: now,
     };
-    intend(row, [{ table: 'contractions', id: row.id, value: row }]);
-    await db.contractions.put(row);
+    await write('contractions', row.id, row);
     await recordUndo('start', [{ table: 'contractions', id: row.id, value: null }], now);
     return row;
   });
@@ -62,8 +60,7 @@ export function stopContraction(id: string, now: number = Date.now()): Promise<C
     const before = await requireContraction(id);
     if (before.endAt !== null) throw new InvariantError('This contraction has already stopped');
     const row = { ...before, endAt: now, updatedAt: now };
-    intend(row, [{ table: 'contractions', id, value: row }]);
-    await getDb().contractions.put(row);
+    await write('contractions', id, row);
     await recordUndo('stop', [{ table: 'contractions', id, value: before }], now);
     return row;
   });
@@ -72,8 +69,7 @@ export function stopContraction(id: string, now: number = Date.now()): Promise<C
 /** "Started by mistake": removes the row for good. */
 export function discardContraction(id: string): Promise<void> {
   return runWrite(async () => {
-    intend(undefined, [{ table: 'contractions', id, value: null }]);
-    await getDb().contractions.delete(id);
+    await write('contractions', id, null);
     await clearUndo();
   });
 }
@@ -84,8 +80,7 @@ export function rateContraction(id: string, intensity: number | null): Promise<C
     const before = await requireContraction(id);
     const now = Date.now();
     const row = { ...before, intensity, updatedAt: now };
-    intend(row, [{ table: 'contractions', id, value: row }]);
-    await getDb().contractions.put(row);
+    await write('contractions', id, row);
     await recordUndo('rate', [{ table: 'contractions', id, value: before }], now);
     return row;
   });
@@ -111,8 +106,7 @@ export function updateContraction(id: string, patch: ContractionPatch): Promise<
       const other = await findOverlapping(row.sessionId, row.startAt, row.endAt, id);
       if (other) throw new OverlapError(other);
     }
-    intend(row, [{ table: 'contractions', id, value: row }]);
-    await getDb().contractions.put(row);
+    await write('contractions', id, row);
     await recordUndo('edit', [{ table: 'contractions', id, value: before }], now);
     return row;
   });
@@ -126,7 +120,7 @@ export function addMissedContraction(
   return runWrite(async () => {
     checkIntensity(input.intensity);
     if (!(input.durationMs > 0)) throw new RangeError('A contraction needs a duration above zero');
-    if (!(await getDb().sessions.get(sessionId))) throw new InvariantError(`No session ${sessionId}`);
+    if (!(await getRow('sessions', sessionId))) throw new InvariantError(`No session ${sessionId}`);
     const now = Date.now();
     const endAt = input.startAt + input.durationMs;
     const other = await findOverlapping(sessionId, input.startAt, endAt);
@@ -143,8 +137,7 @@ export function addMissedContraction(
       reviewed: true,
       updatedAt: now,
     };
-    intend(row, [{ table: 'contractions', id: row.id, value: row }]);
-    await getDb().contractions.put(row);
+    await write('contractions', row.id, row);
     await recordUndo('add', [{ table: 'contractions', id: row.id, value: null }], now);
     return row;
   });
@@ -155,8 +148,7 @@ export function deleteContraction(id: string): Promise<Contraction> {
     const before = await requireContraction(id);
     const now = Date.now();
     const row = { ...before, deletedAt: now, updatedAt: now };
-    intend(row, [{ table: 'contractions', id, value: row }]);
-    await getDb().contractions.put(row);
+    await write('contractions', id, row);
     await recordUndo('delete', [{ table: 'contractions', id, value: before }], now);
     return row;
   });

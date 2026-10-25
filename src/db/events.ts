@@ -1,6 +1,6 @@
 import { InvariantError } from './errors';
-import { intend, runWrite } from './queue';
-import { getDb } from './schema';
+import { runWrite, write } from './queue';
+import { getRow } from './reads';
 import type { EbbEvent, EventType, WatersDetail } from './types';
 import { recordUndo } from './undo';
 
@@ -12,7 +12,7 @@ export interface EventPatch {
 }
 
 async function requireEvent(id: string): Promise<EbbEvent> {
-  const row = await getDb().events.get(id);
+  const row = await getRow('events', id);
   if (!row || row.deletedAt !== null) throw new InvariantError(`No event ${id}`);
   return row;
 }
@@ -23,7 +23,7 @@ export function addEvent(
 ): Promise<EbbEvent> {
   const id = crypto.randomUUID();
   return runWrite(async () => {
-    if (!(await getDb().sessions.get(sessionId))) throw new InvariantError(`No session ${sessionId}`);
+    if (!(await getRow('sessions', sessionId))) throw new InvariantError(`No session ${sessionId}`);
     const now = Date.now();
     const row: EbbEvent = {
       id,
@@ -35,8 +35,7 @@ export function addEvent(
       deletedAt: null,
       updatedAt: now,
     };
-    intend(row, [{ table: 'events', id: row.id, value: row }]);
-    await getDb().events.put(row);
+    await write('events', row.id, row);
     await recordUndo('event', [{ table: 'events', id: row.id, value: null }], now);
     return row;
   });
@@ -54,8 +53,7 @@ export function updateEvent(id: string, patch: EventPatch): Promise<EbbEvent> {
       ...(patch.note !== undefined && { note: patch.note }),
       updatedAt: now,
     };
-    intend(row, [{ table: 'events', id, value: row }]);
-    await getDb().events.put(row);
+    await write('events', id, row);
     await recordUndo('edit', [{ table: 'events', id, value: before }], now);
     return row;
   });
@@ -66,8 +64,7 @@ export function deleteEvent(id: string): Promise<EbbEvent> {
     const before = await requireEvent(id);
     const now = Date.now();
     const row = { ...before, deletedAt: now, updatedAt: now };
-    intend(row, [{ table: 'events', id, value: row }]);
-    await getDb().events.put(row);
+    await write('events', id, row);
     await recordUndo('delete', [{ table: 'events', id, value: before }], now);
     return row;
   });

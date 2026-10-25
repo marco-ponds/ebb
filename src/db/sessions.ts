@@ -1,18 +1,15 @@
 import { InvariantError } from './errors';
-import { intend, runWrite } from './queue';
-import { getDb } from './schema';
-import type { Contraction, Session } from './types';
+import { runWrite, write } from './queue';
+import { findActiveSession, getRow, rowsOf } from './reads';
+import type { Session } from './types';
 import { clearUndo } from './undo';
 
+export { findActiveSession };
+
 async function requireSession(id: string): Promise<Session> {
-  const session = await getDb().sessions.get(id);
+  const session = await getRow('sessions', id);
   if (!session) throw new InvariantError(`No session ${id}`);
   return session;
-}
-
-export async function findActiveSession(): Promise<Session | undefined> {
-  // The endedAt index does not hold nulls, so filter instead of querying it.
-  return getDb().sessions.filter((s) => s.endedAt === null).first();
 }
 
 export function startSession(now: number = Date.now()): Promise<Session> {
@@ -29,8 +26,7 @@ export function startSession(now: number = Date.now()): Promise<Session> {
       updatedAt: now,
       thresholdMetAt: null,
     };
-    intend(session, [{ table: 'sessions', id: session.id, value: session }]);
-    await getDb().sessions.put(session);
+    await write('sessions', id, session);
     await clearUndo();
     return session;
   });
@@ -38,18 +34,12 @@ export function startSession(now: number = Date.now()): Promise<Session> {
 
 export function endSession(id: string, now: number = Date.now()): Promise<Session> {
   return runWrite(async () => {
-    const db = getDb();
     const session = await requireSession(id);
     if (session.endedAt !== null) throw new InvariantError('This session has already ended');
     const ended: Session = { ...session, endedAt: now, updatedAt: now };
-    const open = await db.contractions.where('sessionId').equals(id).filter((c) => c.endAt === null && c.deletedAt === null).first();
-    const closed: Contraction | null = open ? { ...open, endAt: now, updatedAt: now } : null;
-    intend(ended, [
-      { table: 'sessions', id, value: ended },
-      ...(closed ? [{ table: 'contractions' as const, id: closed.id, value: closed }] : []),
-    ]);
-    await db.sessions.put(ended);
-    if (closed) await db.contractions.put(closed);
+    const open = (await rowsOf('contractions', id)).find((c) => c.endAt === null && c.deletedAt === null);
+    await write('sessions', id, ended);
+    if (open) await write('contractions', open.id, { ...open, endAt: now, updatedAt: now });
     await clearUndo();
     return ended;
   });
@@ -59,13 +49,9 @@ function patchSession(id: string, patch: (s: Session) => Session | null): Promis
   return runWrite(async () => {
     const session = await requireSession(id);
     const next = patch(session);
-    if (!next) {
-      intend(session);
-      return session;
-    }
+    if (!next) return session;
     const stamped = { ...next, updatedAt: Date.now() };
-    intend(stamped, [{ table: 'sessions', id, value: stamped }]);
-    await getDb().sessions.put(stamped);
+    await write('sessions', id, stamped);
     return stamped;
   });
 }

@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startContraction, stopContraction } from './contractions';
-import { getQueueSnapshot, intend, retryPendingWrites, runWrite, setRetryDelays } from './queue';
+import { getQueueSnapshot, retryPendingWrites, runWrite, setRetryDelays, write } from './queue';
+import { undoLast } from './undo';
+import { deleteAllData, restoreBackup, buildBackup } from './backup';
+import { endSession } from './sessions';
 import { getDb } from './schema';
 import { startSession } from './sessions';
 import { dropDb, freshDb } from './testDb';
@@ -72,21 +75,58 @@ describe('runWrite', () => {
     expect((await db.contractions.get(c.id))?.startAt).toBe(2000);
   });
 
-  it('replays pending writes in order, ahead of later writes', async () => {
-    setRetryDelays([0, 0, 0]);
-    const s = await startSession(1000);
-    const db = getDb();
-    const put = vi.spyOn(db.contractions, 'put').mockRejectedValue(new Error('disk full'));
-    const c = await startContraction(s.id, 2000);
-    const stopped = await stopContraction(c.id, 3000).catch((e) => e);
-    // The open row never reached the database, so stop can't find it: a loud error, not a silent loss.
-    expect(stopped).toBeInstanceOf(Error);
-    put.mockRestore();
-    const next = await startContraction(s.id, 5000).catch((e) => e);
-    // The pending start was flushed first, so the second start sees an open contraction.
-    expect((next as Error).message).toMatch(/in progress/);
-    expect((await db.contractions.get(c.id))?.startAt).toBe(2000);
-    expect(getQueueSnapshot().status).toBe('ok');
+  describe('while an earlier write is parked', () => {
+    async function parkedStart() {
+      setRetryDelays([0, 0, 0]);
+      const s = await startSession(1000);
+      const put = vi.spyOn(getDb().contractions, 'put').mockRejectedValue(new Error('disk full'));
+      const c = await startContraction(s.id, 2000);
+      return { s, c, put };
+    }
+
+    it('a stop after a parked start is kept, and Retry commits both in order', async () => {
+      const { c, put } = await parkedStart();
+      const stopped = await stopContraction(c.id, 3000);
+      expect(stopped).toMatchObject({ id: c.id, startAt: 2000, endAt: 3000 });
+      expect(getQueueSnapshot()).toMatchObject({ status: 'failing', pendingCount: 2 });
+      const shown = mergeOverlay<{ id: string; endAt: number | null }>([], getQueueSnapshot().overlay, 'contractions');
+      expect(shown).toEqual([expect.objectContaining({ id: c.id, endAt: 3000 })]);
+      put.mockRestore();
+      expect(await retryPendingWrites()).toBe(true);
+      expect(await getDb().contractions.get(c.id)).toMatchObject({ startAt: 2000, endAt: 3000 });
+      expect(getQueueSnapshot()).toMatchObject({ status: 'ok', pendingCount: 0 });
+    });
+
+    it('invariants hold across parked and new ops (no second open contraction)', async () => {
+      const { s } = await parkedStart();
+      await expect(startContraction(s.id, 2500)).rejects.toThrow(/in progress/);
+      expect(getQueueSnapshot().pendingCount).toBe(1);
+    });
+
+    it('undo targets the latest intended action, not an older committed one', async () => {
+      setRetryDelays([0, 0, 0]);
+      const s = await startSession(1000);
+      const first = await startContraction(s.id, 2000);
+      await stopContraction(first.id, 3000); // committed; the DB undo slot now says "stop first"
+      const put = vi.spyOn(getDb().contractions, 'put').mockRejectedValue(new Error('disk full'));
+      const second = await startContraction(s.id, 5000); // parked
+      expect(await undoLast()).toBe('start');
+      const shown = mergeOverlay<{ id: string }>([{ id: first.id }], getQueueSnapshot().overlay, 'contractions');
+      expect(shown.map((r) => r.id)).toEqual([first.id]);
+      put.mockRestore();
+      expect(await retryPendingWrites()).toBe(true);
+      expect(await getDb().contractions.get(second.id)).toBeUndefined();
+      expect((await getDb().contractions.get(first.id))?.endAt).toBe(3000); // the older action was left alone
+      expect(await getDb().undo.get('singleton')).toBeUndefined();
+    });
+
+    it('the parked undo entry is what undo reads next', async () => {
+      const { c } = await parkedStart();
+      await stopContraction(c.id, 3000);
+      expect(await undoLast()).toBe('stop'); // reopens the parked row
+      const shown = mergeOverlay<{ id: string; endAt: number | null }>([], getQueueSnapshot().overlay, 'contractions');
+      expect(shown[0]).toMatchObject({ id: c.id, endAt: null });
+    });
   });
 
   it('does not retry domain errors', async () => {
@@ -107,7 +147,55 @@ describe('runWrite', () => {
     expect(getQueueSnapshot().pendingCount).toBe(0);
   });
 
-  it('intend outside runWrite is a programming error', () => {
-    expect(() => intend(1)).toThrow(/inside runWrite/);
+  it('write outside runWrite is a programming error', async () => {
+    await expect(write('sessions', 'x', null)).rejects.toThrow(/inside runWrite/);
+  });
+
+  describe('bulk operations are not taps', () => {
+    it('restoreBackup rejects when storage fails, parks nothing and changes nothing', async () => {
+      setRetryDelays([0, 0, 0]);
+      const s = await startSession(1000);
+      await endSession(s.id, 2000);
+      const backup = await buildBackup(5000);
+      vi.spyOn(getDb().sessions, 'bulkPut').mockRejectedValue(new Error('disk full'));
+      await expect(restoreBackup({ ...backup, sessions: [{ ...backup.sessions[0], id: 'new' }], contractions: [], events: [] }, 'merge')).rejects.toThrow('disk full');
+      expect(getQueueSnapshot()).toMatchObject({ status: 'ok', pendingCount: 0 });
+      expect(await getDb().sessions.get('new')).toBeUndefined();
+    });
+
+    it('deleteAllData rejects when the clear fails and keeps the backups cache', async () => {
+      setRetryDelays([0, 0, 0]);
+      await startSession(1000);
+      const deleted: string[] = [];
+      vi.stubGlobal('caches', { delete: async (n: string) => void deleted.push(n) });
+      vi.spyOn(getDb().sessions, 'clear').mockRejectedValue(new Error('disk full'));
+      await expect(deleteAllData()).rejects.toThrow('disk full');
+      expect(deleted).toEqual([]);
+      expect(await getDb().sessions.count()).toBe(1);
+      vi.unstubAllGlobals();
+    });
+
+    it('Replace re-checks for an active session inside the queue, so a session queued first survives', async () => {
+      const s0 = await startSession(1000);
+      await endSession(s0.id, 2000);
+      const backup = await buildBackup(5000);
+      const started = startSession(9000); // queued before the restore, so it commits before the restore runs
+      const restore = restoreBackup(backup, 'replace');
+      const live = await started;
+      await expect(restore).rejects.toThrow(/active session/);
+      expect((await getDb().sessions.get(live.id))?.endedAt).toBeNull();
+    });
+
+    it('does not run while earlier writes are still parked', async () => {
+      setRetryDelays([0, 0, 0]);
+      const s = await startSession(1000);
+      await endSession(s.id, 1500);
+      const backup = await buildBackup(5000);
+      const s2 = await startSession(6000);
+      const put = vi.spyOn(getDb().sessions, 'put').mockRejectedValue(new Error('disk full'));
+      await endSession(s2.id, 7000); // parked
+      await expect(restoreBackup(backup, 'replace')).rejects.toThrow(/not saved yet/);
+      put.mockRestore();
+    });
   });
 });
