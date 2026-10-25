@@ -1,0 +1,101 @@
+/* The only file allowed to contain colour literals. */
+:root {
+  /* Colour */
+  --bg: #1b1929;
+  --surface: #252238;
+  --surface-2: #2f2b45;
+  --hairline: #3a3553;
+  --text: #f1ecf8;
+  --text-muted: #b3accb;
+  --text-faint: #8c85a8;
+  --ink: #2a2442;
+  --lavender: #cbbbf4;
+  --peach: #f7c9b5;
+  --mint: #aedfcf;
+  --butter: #f1e0aa;
+  --sky: #b4caf0;
+  --rose: #f2b8c6;
+
+  /* Tints: accent at 12 % alpha on --surface */
+  --tint-butter: rgba(241, 224, 170, 0.12);
+  --tint-lavender: rgba(203, 187, 244, 0.12);
+  --tint-peach: rgba(247, 201, 181, 0.12);
+  --tint-mint: rgba(174, 223, 207, 0.12);
+  --tint-sky: rgba(180, 202, 240, 0.12);
+
+  /* Radii */
+  --radius-hero: 48px;
+  --radius-card: 28px;
+  --radius-button: 20px;
+  --radius-icon: 18px;
+  --radius-pill: 999px;
+
+  /* Spacing (4-pt base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --gutter: 20px;
+  --gap-card: 12px;
+  --touch-min: 48px;
+
+  /* Type sizes */
+  --fs-hero: clamp(76px, 20vw, 92px);
+  --fs-stat: 38px;
+  --fs-stat-min: 32px;
+  --fs-button: 26px;
+  --fs-title: 22px;
+  --fs-card-title: 18px;
+  --fs-body: 15px;
+  --fs-caption: 13px;
+
+  /* Motion */
+  --dur-crossfade: 220ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --glow-duration: 8s;
+}
+
+[data-theme='day'] {
+  --bg: #f7f4fb;
+  --surface: #ffffff;
+  --surface-2: #eee8f7;
+  --text: #2a2442;
+  --text-muted: #4f4868;
+  --text-faint: #625b7d;
+  --hairline: #dcd4ea;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme='system'] {
+    --bg: #f7f4fb;
+    --surface: #ffffff;
+    --surface-2: #eee8f7;
+    --text: #2a2442;
+    --text-muted: #4f4868;
+    --text-faint: #625b7d;
+    --hairline: #dcd4ea;
+  }
+}
+
+/* Higher-contrast muted text. Night palette: lighter. Light grounds (day, system on a light OS):
+   darker, 10.7:1 on --bg and 11.8:1 on --surface. */
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: #d6d0e8;
+  }
+
+  [data-theme='day'] {
+    --text-muted: #3a3450;
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: light) {
+  [data-theme='system'] {
+    --text-muted: #3a3450;
+  }
+}
