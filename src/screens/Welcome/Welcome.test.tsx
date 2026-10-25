@@ -61,6 +61,18 @@ describe('WelcomeScreen', () => {
     expect(screen.getByText('Tap Share, then Add to Home Screen.')).toBeInTheDocument();
   });
 
+  it('says how to install from the browser menu on a secure, non-iOS browser', () => {
+    render(<WelcomeScreen />);
+    expect(screen.getByText('To install, open your browser menu and choose Install app or Add to Home screen.')).toBeInTheDocument();
+  });
+
+  it('asks for a secure link over plain http', () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    render(<WelcomeScreen />);
+    expect(screen.getByText('To install Ebb, open it from a secure (https) link.')).toBeInTheDocument();
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+  });
+
   it('shows an Install button that uses the deferred prompt, on Chromium', async () => {
     render(<WelcomeScreen />);
     expect(screen.queryByRole('button', { name: 'Install' })).toBeNull();
