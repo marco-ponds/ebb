@@ -1,0 +1,197 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card);
+  min-height: 100vh;
+  padding: var(--space-4) var(--gutter) var(--space-8);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 900;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-card-title);
+}
+
+.legendName {
+  font-weight: 900;
+}
+
+.legendDate {
+  color: var(--text-faint);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+/* Series differ by fill and line style, never by colour alone. */
+.swatch {
+  flex: none;
+  box-sizing: border-box;
+  width: 52px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+}
+
+.swatch[data-series='primary'] {
+  background: var(--lavender);
+}
+
+.swatch[data-series='secondary'] {
+  height: 0;
+  border-top: 3px dashed var(--sky);
+  border-radius: 0;
+}
+
+.swatch[data-series='tertiary'] {
+  height: 0;
+  border-top: 3px dotted var(--text-muted);
+  border-radius: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+}
+
+.cardNote {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+.timelines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.timeline {
+  margin: 0;
+}
+
+.timelineName,
+.colHead {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 900;
+}
+
+.timelineName[data-series='primary'],
+.colHead[data-series='primary'] {
+  color: var(--lavender);
+}
+
+.timelineName[data-series='secondary'],
+.colHead[data-series='secondary'] {
+  color: var(--sky);
+}
+
+.timelineName[data-series='tertiary'],
+.colHead[data-series='tertiary'] {
+  color: var(--text-muted);
+}
+
+/* The trend chart's x axis is in absolute clock time; here x is time since each start, so hide its labels. */
+.trend :global([data-axis]) {
+  display: none;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.colHead {
+  padding: 0 0 var(--space-3);
+  text-align: left;
+}
+
+.rowHead,
+.cell {
+  padding: var(--space-3) var(--space-2) var(--space-3) 0;
+  border-top: 1px solid var(--surface-2);
+  text-align: left;
+  font-size: var(--fs-card-title);
+}
+
+.rowHead {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.cell {
+  font-weight: 900;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-12);
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-card-title);
+  font-weight: 800;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-button);
+  background: var(--lavender);
+  color: var(--ink);
+  font-size: var(--fs-card-title);
+  font-weight: 900;
+  text-decoration: none;
+}
