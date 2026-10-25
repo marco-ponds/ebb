@@ -34,6 +34,9 @@
 
 .header[data-dimmed='true'] {
   opacity: 0.55;
+  /* At 55 % the muted greys fall under 4.5:1, so the dimmed header's secondary text uses the full text colour. */
+  --text-muted: var(--text);
+  --text-faint: var(--text);
 }
 
 .title {

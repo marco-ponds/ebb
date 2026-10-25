@@ -29,6 +29,19 @@ describe('runWrite', () => {
     expect(order).toEqual(['first', 'second']);
   });
 
+  it('records one "ebb:db-commit" performance measure per committed write, for the e2e p95 check', async () => {
+    performance.clearMeasures('ebb:db-commit');
+    await runWrite(async () => {
+      await getDb().sessions.count();
+    });
+    await runWrite(async () => {
+      await getDb().sessions.count();
+    });
+    const measures = performance.getEntriesByName('ebb:db-commit', 'measure');
+    expect(measures).toHaveLength(2);
+    for (const m of measures) expect(m.duration).toBeGreaterThanOrEqual(0);
+  });
+
   it('runs each op inside a Dexie rw transaction', async () => {
     const mode = await runWrite(async () => {
       const { default: Dexie } = await import('dexie');
