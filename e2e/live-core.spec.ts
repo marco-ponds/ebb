@@ -243,6 +243,12 @@ test.describe('information display', () => {
     await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/settings');
   });
 
+  test('the session name link is at least 48 px tall', async ({ page }) => {
+    await openLive(page);
+    const box = await page.getByRole('link', { name: 'Test labour' }).boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+  });
+
   test('the session name links to the session detail', async ({ page }) => {
     const session = await openLive(page);
     await page.getByRole('link', { name: 'Test labour' }).click();

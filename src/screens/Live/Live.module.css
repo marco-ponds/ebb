@@ -47,6 +47,9 @@
 }
 
 .name a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
   color: var(--text);
   text-decoration: none;
 }

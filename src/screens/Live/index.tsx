@@ -14,7 +14,8 @@ import { LiveLayout } from './LiveLayout';
 import { pausedMs, staleMinutes } from './liveLogic';
 import { MenuSheet } from './MenuSheet';
 import { MiniTimeline } from './MiniTimeline';
-import { PausedCard, StaleCard, StorageNotices } from './Notices';
+import { Button } from '../../components';
+import { Notice, PausedCard, StaleCard, StorageNotices } from './Notices';
 import { ActionRowSlot, EndSlot, RatingSlot, useRatingActive, type LiveSlotContext } from './slots';
 import { ThresholdBanner } from './ThresholdBanner';
 import { useContractionToggle } from './useContractionToggle';
@@ -56,7 +57,7 @@ function LiveSession({ session }: { session: Session }) {
   const events = useEvents(session.id) ?? NONE_E;
   const active = useAppStore((s) => s.activeContraction);
   const wakeLock = useWakeLock(true, settings.keepAwake);
-  const { toggle, announcement } = useContractionToggle(session.id, active, settings.haptics);
+  const { toggle, announcement, problem, clearProblem } = useContractionToggle(session.id, active, settings.haptics);
   const banner = useThresholdBanner(session, contractions, settings.thresholds);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -107,6 +108,17 @@ function LiveSession({ session }: { session: Session }) {
       banner={banner.shown ? <ThresholdBanner threshold={banner.shown} onDismiss={banner.dismiss} /> : null}
       notices={
         <>
+          {problem ? (
+            <Notice
+              actions={
+                <Button variant="secondary" onClick={clearProblem}>
+                  OK
+                </Button>
+              }
+            >
+              {problem}
+            </Notice>
+          ) : null}
           <StorageNotices status={storage.status} conflictCount={storage.conflictCount} />
           {active && stale !== null && keptTiming !== active.id ? (
             <StaleCard active={active} minutes={stale} now={now} onKeepTiming={() => setKeptTiming(active.id)} />
