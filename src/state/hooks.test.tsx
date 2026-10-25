@@ -71,7 +71,7 @@ describe('hooks', () => {
     const storage = renderHook(() => useStorageStatus());
     expect(settings.result.current.theme).toBe('night');
     expect(undo.result.current).toBe(false);
-    expect(storage.result.current).toEqual({ status: 'ok', pendingCount: 0 });
+    expect(storage.result.current).toEqual({ status: 'ok', pendingCount: 0, conflictCount: 0 });
     await startContraction(s.id, 2000);
     await waitFor(() => expect(undo.result.current).toBe(true));
     await undoLast();

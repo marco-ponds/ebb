@@ -25,7 +25,7 @@ describe('initStore', () => {
   it('opens the db, loads the cache, marks ready and sets data-db-ready', async () => {
     await initStore();
     expect(state()).toMatchObject({ ready: true, activeSession: null, activeContraction: null, undo: null });
-    expect(state().storage).toEqual({ status: 'ok', pendingCount: 0 });
+    expect(state().storage).toEqual({ status: 'ok', pendingCount: 0, conflictCount: 0 });
     expect(state().settings).toEqual(DEFAULT_SETTINGS);
     expect(document.documentElement.dataset.dbReady).toBe('1');
     expect(await getDb().settings.count()).toBe(1);
@@ -148,11 +148,11 @@ describe('store follows the database', () => {
     const put = vi.spyOn(getDb().contractions, 'put').mockRejectedValue(new Error('full'));
     const c = await startContraction(s.id, 2000);
     expect(state().activeContraction?.id).toBe(c.id);
-    expect(state().storage).toEqual({ status: 'failing', pendingCount: 1 });
+    expect(state().storage).toEqual({ status: 'failing', pendingCount: 1, conflictCount: 0 });
     expect(await getDb().contractions.count()).toBe(0);
     put.mockRestore();
     expect(await retryPendingWrites()).toBe(true);
-    expect(state().storage).toEqual({ status: 'ok', pendingCount: 0 });
+    expect(state().storage).toEqual({ status: 'ok', pendingCount: 0, conflictCount: 0 });
     await vi.waitFor(() => expect(state().activeContraction?.id).toBe(c.id));
     expect(await getDb().contractions.count()).toBe(1);
     expect(getQueueSnapshot().overlay).toEqual([]);

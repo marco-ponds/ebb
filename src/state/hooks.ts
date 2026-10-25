@@ -71,6 +71,6 @@ export function useUndoAvailable(): boolean {
   return useAppStore((s) => s.undo !== null);
 }
 
-export function useStorageStatus(): { status: StorageStatus; pendingCount: number } {
+export function useStorageStatus(): { status: StorageStatus; pendingCount: number; conflictCount: number } {
   return useAppStore((s) => s.storage);
 }

@@ -14,7 +14,7 @@ export interface AppState {
   activeSession: Session | null;
   activeContraction: Contraction | null;
   settings: Settings;
-  storage: { status: StorageStatus; pendingCount: number };
+  storage: { status: StorageStatus; pendingCount: number; conflictCount: number };
   undo: UndoEntry | null;
 }
 
@@ -23,7 +23,7 @@ const initial = (): AppState => ({
   activeSession: null,
   activeContraction: null,
   settings: structuredClone(DEFAULT_SETTINGS),
-  storage: { status: 'ok', pendingCount: 0 },
+  storage: { status: 'ok', pendingCount: 0, conflictCount: 0 },
   undo: null,
 });
 
@@ -42,7 +42,7 @@ let teardowns: Array<() => void> = [];
 
 function derive(): void {
   const queue = getQueueSnapshot();
-  const storage = { status: queue.status, pendingCount: queue.pendingCount };
+  const storage = { status: queue.status, pendingCount: queue.pendingCount, conflictCount: queue.conflicts.length };
   if (!lastSnapshot) {
     useAppStore.setState({ storage });
     return;

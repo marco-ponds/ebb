@@ -13,10 +13,17 @@ export interface OverlayRecord {
   value: Session | Contraction | EbbEvent | Settings | UndoEntry | null;
 }
 
+/** A parked change that could not be saved because the database changed underneath it (e.g. another tab got there first). */
+export interface ReplayConflict {
+  reason: string;
+  writes: readonly OverlayRecord[];
+}
+
 export interface QueueSnapshot {
   status: StorageStatus;
   pendingCount: number;
   overlay: readonly OverlayRecord[];
+  conflicts: readonly ReplayConflict[];
 }
 
 export interface RunWriteOptions {
@@ -50,13 +57,15 @@ let memoryMode = false;
 let failing = false;
 let running: WriteContext | null = null;
 const listeners = new Set<() => void>();
-let snapshot: QueueSnapshot = { status: 'ok', pendingCount: 0, overlay: [] };
+let conflicts: ReplayConflict[] = [];
+let snapshot: QueueSnapshot = { status: 'ok', pendingCount: 0, overlay: [], conflicts: [] };
 
 function emit(): void {
   snapshot = {
     status: memoryMode ? 'memory' : failing ? 'failing' : 'ok',
     pendingCount: pending.length,
     overlay: pending.flatMap((p) => p.writes),
+    conflicts,
   };
   for (const l of listeners) l();
 }
@@ -162,6 +171,30 @@ async function attemptWithRetries<T>(op: () => Promise<T>, ctx: WriteContext, de
   }
 }
 
+class ConflictSignal extends Error {}
+
+/**
+ * Parked writes are only known to this tab, so before they land the data-model invariants are re-checked against the
+ * database: at most one active session, at most one open contraction, and only in the active session.
+ */
+async function assertInvariants(db: EbbDB, writes: OverlayRecord[]): Promise<void> {
+  for (const w of writes) {
+    const v = w.value as Session | Contraction | null;
+    if (!v) continue;
+    if (w.table === 'sessions' && (v as Session).endedAt === null) {
+      if (await db.sessions.filter((s) => s.endedAt === null && s.id !== w.id).first()) throw new ConflictSignal('Another session is already active');
+    }
+    if (w.table === 'contractions' && (v as Contraction).endAt === null && (v as Contraction).deletedAt === null) {
+      const c = v as Contraction;
+      if (await db.contractions.filter((o) => o.endAt === null && o.deletedAt === null && o.id !== w.id).first()) {
+        throw new ConflictSignal('Another contraction is already in progress');
+      }
+      const session = await db.sessions.get(c.sessionId);
+      if (!session || session.endedAt !== null) throw new ConflictSignal('The session this contraction belongs to has ended');
+    }
+  }
+}
+
 /** Replays parked writes in order, one transaction each. Stops at the first storage failure. */
 async function flush(): Promise<boolean> {
   while (pending.length > 0) {
@@ -170,8 +203,16 @@ async function flush(): Promise<boolean> {
       const db = getDb();
       await db.transaction('rw', TABLES.map((t) => db[t]), async () => {
         for (const w of next.writes) await applyWrite(db, w);
+        await assertInvariants(db, next.writes);
       });
-    } catch {
+    } catch (e) {
+      if (e instanceof ConflictSignal) {
+        // Not applied, not dropped silently: reported, and the overlay no longer shows it. Later sets stay parked.
+        conflicts = [...conflicts, { reason: e.message, writes: next.writes }];
+        pending = pending.slice(1);
+        failing = true;
+        emit();
+      }
       return false;
     }
     pending = pending.slice(1);
@@ -232,6 +273,12 @@ export function retryPendingWrites(): Promise<boolean> {
   return result;
 }
 
+/** Forget the reported conflicts once the user has seen them. */
+export function clearConflicts(): void {
+  conflicts = [];
+  emit();
+}
+
 /** Test hook: shorten the retry back-off. */
 export function setRetryDelays(delays: number[]): void {
   retryDelays = delays;
@@ -241,6 +288,7 @@ export function setRetryDelays(delays: number[]): void {
 export function resetQueue(): void {
   chain = Promise.resolve();
   pending = [];
+  conflicts = [];
   failing = false;
   memoryMode = false;
   retryDelays = [100, 300, 900];
