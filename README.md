@@ -41,6 +41,8 @@ To install from that link:
 - iPhone or iPad: open it in Safari, tap Share, then Add to Home Screen.
 - Android: open it in Chrome, then use the menu and choose Install app (or Add to Home screen).
 
+Ebb is served from the shared marco-ponds.github.io origin, so other Pages sites on that origin share its browser storage: keep them static and free of third-party scripts, or move Ebb to its own domain.
+
 Ebb must be opened over https (or localhost) to install and work offline; plain http on a LAN address won't do.
 
 ## Audit
