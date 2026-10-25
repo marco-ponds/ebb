@@ -1,6 +1,6 @@
 ---
 feature: ebb
-status: approved
+status: done
 ---
 # Ebb v1: offline-first contraction-timer PWA
 
