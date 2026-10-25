@@ -34,6 +34,8 @@ export interface TimelineProps {
   /** Draw the hour axis under the bars (compare only). Default true; stack several and show it on the last. */
   showAxis?: boolean;
   onSelect?: (id: string) => void;
+  /** Extra tooltip lines for a bar, appended after the built-in ones. */
+  tooltipLines?: (id: string) => string[];
   /** With onDomainChange, pinch / drag / double-tap adjust the visible range. */
   fullDomain?: [number, number];
   onDomainChange?: (domain: [number, number]) => void;
@@ -68,6 +70,7 @@ export function Timeline({
   relative: relativeProp,
   showAxis = true,
   onSelect,
+  tooltipLines,
   fullDomain,
   onDomainChange,
 }: TimelineProps) {
@@ -148,6 +151,7 @@ export function Timeline({
             `Lasting ${formatLength(it.endAt - it.startAt)}`,
             it.intensity === null ? 'Strength not rated' : `Strength ${it.intensity}/10`,
             ...(it.flag ? [FLAG_TEXT[it.flag]] : []),
+            ...(tooltipLines?.(it.id) ?? []),
           ],
         }),
         selectId: it.id,
@@ -164,7 +168,7 @@ export function Timeline({
         } satisfies ChartTarget,
       }));
     return [...itemTargets, ...markerTargets].sort((a, b) => a.t - b.t).map((e) => e.target);
-  }, [visibleItems, markers, domain, x, relative]);
+  }, [visibleItems, markers, domain, x, relative, tooltipLines]);
 
   const markerR = variant === 'full' ? 10 : 5;
   const legend =
