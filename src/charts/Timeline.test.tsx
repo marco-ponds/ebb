@@ -148,8 +148,9 @@ describe('Timeline interaction', () => {
 });
 
 describe('Timeline performance', () => {
-  it('renders 320 items in under 50 ms', { retry: 2 }, () => {
-    // Timing-only: the binding in-browser DB-commit budget is checked by the Playwright perf spec; this unit benchmark runs on fake-indexeddb under parallel load.
+  it.runIf(process.env.EBB_BENCH === '1')('renders 320 items in under 50 ms', { retry: 2 }, () => {
+    // Opt-in timing benchmark (fake-indexeddb/jsdom timings are load-sensitive): run with `npm run test:bench`.
+    // The binding in-browser budgets are enforced by e2e/quality/perf.spec.ts.
     const items = Array.from({ length: 320 }, (_, i) => ({
       id: `c${i}`,
       startAt: base + i * 4 * MIN,

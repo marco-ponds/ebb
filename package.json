@@ -9,6 +9,7 @@
     "preview": "vite preview --port 4173 --strictPort",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:bench": "EBB_BENCH=1 vitest run src/state/store.test.ts src/charts/Timeline.test.tsx src/domain/metrics.test.ts",
     "e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -107,8 +107,9 @@ describe('persist before render', () => {
     await vi.waitFor(() => expect(state().activeContraction?.id).toBe(c.id));
   });
 
-  it('p95 of startContraction + stopContraction stays under 50 ms over 100 runs', { retry: 2 }, async () => {
-    // Timing-only: the binding in-browser DB-commit budget is checked by the Playwright perf spec; this unit benchmark runs on fake-indexeddb under parallel load.
+  it.runIf(process.env.EBB_BENCH === '1')('p95 of startContraction + stopContraction stays under 50 ms over 100 runs', { retry: 2 }, async () => {
+    // Opt-in timing benchmark (fake-indexeddb/jsdom timings are load-sensitive): run with `npm run test:bench`.
+    // The binding in-browser budgets are enforced by e2e/quality/perf.spec.ts.
     const s = await startSession(1000);
     await initStore();
     // Warm-up runs (not measured) so JIT and first-open costs don't land in the sample.
