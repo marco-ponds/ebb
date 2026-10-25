@@ -76,7 +76,53 @@ describe('replaying parked writes re-checks the cross-tab invariants', () => {
     b.close();
   });
 
-  it('keeps later parked sets parked and applies nothing out of order; clearConflicts empties the report', async () => {
+  it('a later set planned on a conflicted one is not applied either (start X, stop X vs tab B open contraction)', async () => {
+    const { startContraction: start, stopContraction: stop } = await import('./contractions');
+    const { undoLast } = await import('./undo');
+    const s = await startSession(1000);
+    const spy = vi.spyOn(getDb().contractions, 'put').mockRejectedValue(new Error('disk full'));
+    const x = await start(s.id, 2000);
+    await stop(x.id, 3000);
+    expect(getQueueSnapshot().pendingCount).toBe(2);
+    const b = tabB();
+    await b.contractions.put(open('from-b', s.id, 2100));
+    spy.mockRestore();
+
+    await retryPendingWrites();
+    await retryPendingWrites();
+
+    expect(await getDb().contractions.get(x.id)).toBeUndefined();
+    expect(await getDb().undo.get('singleton')).toBeUndefined(); // not the parked 'stop'
+    const snap = getQueueSnapshot();
+    expect(snap.conflicts).toHaveLength(2);
+    expect(snap.pendingCount).toBe(0);
+    expect(snap.overlay).toEqual([]);
+    expect((await getDb().contractions.toArray()).filter((c) => c.endAt === null).map((c) => c.id)).toEqual(['from-b']);
+    expect(await undoLast()).toBeNull(); // nothing can reopen X next to B's contraction
+    b.close();
+  });
+
+  it('same for sessions (parked startSession + endSession vs tab B active session)', async () => {
+    const { endSession } = await import('./sessions');
+    const spy = vi.spyOn(getDb().sessions, 'put').mockRejectedValue(new Error('disk full'));
+    const a = await startSession(1000);
+    await endSession(a.id, 2000);
+    expect(getQueueSnapshot().pendingCount).toBe(2);
+    const b = tabB();
+    await b.sessions.put(session('from-b'));
+    spy.mockRestore();
+
+    await retryPendingWrites();
+    await retryPendingWrites();
+
+    expect(await getDb().sessions.get(a.id)).toBeUndefined();
+    expect((await getDb().sessions.toArray()).map((x) => x.id)).toEqual(['from-b']);
+    expect(getQueueSnapshot()).toMatchObject({ pendingCount: 0, overlay: [] });
+    expect(getQueueSnapshot().conflicts).toHaveLength(2);
+    b.close();
+  });
+
+  it('clearConflicts empties the report', async () => {
     const s = await startSession(1000);
     const { recover } = await parkOnTabA('contractions', () => startContraction(s.id, 2000));
     const b = tabB();

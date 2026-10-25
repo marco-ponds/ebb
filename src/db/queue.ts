@@ -207,9 +207,14 @@ async function flush(): Promise<boolean> {
       });
     } catch (e) {
       if (e instanceof ConflictSignal) {
-        // Not applied, not dropped silently: reported, and the overlay no longer shows it. Later sets stay parked.
-        conflicts = [...conflicts, { reason: e.message, writes: next.writes }];
-        pending = pending.slice(1);
+        // Not applied, not dropped silently: reported, and the overlay no longer shows it.
+        // Later sets were planned on top of this one (a stop of a start that never landed), so they go too.
+        conflicts = [
+          ...conflicts,
+          { reason: e.message, writes: next.writes },
+          ...pending.slice(1).map((p) => ({ reason: 'Planned after a change that could not be saved', writes: p.writes })),
+        ];
+        pending = [];
         failing = true;
         emit();
       }
