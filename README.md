@@ -20,6 +20,7 @@ npm run build        # typecheck, production build, then the 120 kB gzip JS budg
 npm run preview      # serve dist/ on http://localhost:4173
 npm test             # Vitest (jsdom, fake-indexeddb, network blocked)
 npm run test:coverage
+npm run test:bench    # opt-in timing benchmarks (load-sensitive); binding budgets live in e2e perf.spec.ts
 npm run e2e          # Playwright (iPhone 13 / WebKit and Pixel 7 / Chromium); builds and serves first
 npm run lint
 npm run typecheck
