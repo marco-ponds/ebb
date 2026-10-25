@@ -3,6 +3,7 @@ import {
   buildBackup,
   deleteAllData,
   exportBackup,
+  markBackupDone,
   parseBackup,
   restoreBackup,
   snapshotToBackupsCache,
@@ -73,10 +74,12 @@ describe('buildBackup / exportBackup', () => {
     expect(b.settings).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('exports a dated JSON file and records lastBackupAt', async () => {
+  it('exports a dated JSON file without recording a backup, until markBackupDone', async () => {
     await seedFinishedSession();
     const { blob, filename } = await exportBackup(NOON);
     expect(filename).toBe('ebb-backup-2026-10-25.json');
+    expect((await getSettings()).lastBackupAt).toBeNull();
+    await markBackupDone(NOON);
     expect((await getSettings()).lastBackupAt).toBe(NOON);
     const parsed = parseBackup(await blob.text());
     expect(parsed.ok).toBe(true);

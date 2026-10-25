@@ -1,0 +1,16 @@
+.mark {
+  display: inline-block;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--lavender);
+}
+
+.mark[data-size='small'] {
+  font-size: 40px;
+}
+
+.mark[data-size='large'] {
+  font-size: 72px;
+  letter-spacing: -2px;
+}

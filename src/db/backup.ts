@@ -47,13 +47,18 @@ function localDate(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Builds the backup file. It does not record a backup: call markBackupDone once the file is really saved. */
 export async function exportBackup(now: number): Promise<{ blob: Blob; filename: string }> {
-  await updateSettings({ lastBackupAt: now });
   const backup = await buildBackup(now);
   return {
     blob: new Blob([JSON.stringify(backup)], { type: 'application/json' }),
     filename: `ebb-backup-${localDate(now)}.json`,
   };
+}
+
+/** Records that a backup was saved at `now` (the Start screen's "Back up · today"). */
+export async function markBackupDone(now: number): Promise<void> {
+  await updateSettings({ lastBackupAt: now });
 }
 
 // --- validation ---

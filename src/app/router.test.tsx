@@ -103,3 +103,9 @@ describe('goBack', () => {
     back.mockRestore();
   });
 });
+
+describe('parseHash with a malformed hash', () => {
+  it('treats an undecodable session id as the start route instead of throwing', () => {
+    expect(parseHash('#/session/%E0%A4%A').name).toBe('start');
+  });
+});

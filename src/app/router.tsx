@@ -28,7 +28,12 @@ export function parseHash(hash: string): Route {
 
   const session = /^\/session\/([^/]+)$/.exec(path);
   if (session?.[1]) {
-    return { name: 'session', params: { id: decodeURIComponent(session[1]) }, query, path };
+    try {
+      return { name: 'session', params: { id: decodeURIComponent(session[1]) }, query, path };
+    } catch {
+      // A malformed escape (e.g. "%E0%A4%A") is not a session we can open: land on Start.
+      return { name: 'start', params: {}, query, path: '/' };
+    }
   }
   const name = SIMPLE[path];
   if (name) return { name, params: {}, query, path };
