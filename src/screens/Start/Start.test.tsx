@@ -6,6 +6,7 @@ import { startContraction, stopContraction } from '../../db/contractions';
 import { endSession, startSession } from '../../db/sessions';
 import { updateSettings } from '../../db/settings';
 import { dropDb, freshDb } from '../../db/testDb';
+import * as sessionsDb from '../../db/sessions';
 import * as share from '../../lib/share';
 import { initStore, teardownStore, useAppStore } from '../../state/store';
 import { StartScreen } from '.';
@@ -138,6 +139,15 @@ describe('StartScreen', () => {
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(screen.getByRole('button', { name: 'Back up · 5 days ago' })).toBeInTheDocument();
     expect(useAppStore.getState().settings.lastBackupAt).toBe(before);
+  });
+
+  it('tells the person, quietly, when a session could not be started', async () => {
+    vi.spyOn(sessionsDb, 'startSession').mockRejectedValue(new Error('boom'));
+    await boot();
+    await userEvent.click(screen.getByRole('button', { name: /Start timing/ }));
+    await waitFor(() => expect(useToastStore.getState().toast?.message).toBe("Couldn't start a session. Please try again."));
+    expect(window.location.hash).not.toBe('#/live');
+    expect(screen.getByRole('button', { name: /Start timing/ })).toBeEnabled();
   });
 
   it('tells the person, quietly, when the file could not be saved', async () => {

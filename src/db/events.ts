@@ -1,3 +1,4 @@
+import { newId } from '../lib/uuid';
 import { InvariantError } from './errors';
 import { runWrite, write } from './queue';
 import { getRow } from './reads';
@@ -21,7 +22,7 @@ export function addEvent(
   sessionId: string,
   input: { type: EventType; at: number; details?: WatersDetail | null; note?: string | null },
 ): Promise<EbbEvent> {
-  const id = crypto.randomUUID();
+  const id = newId();
   return runWrite(async () => {
     if (!(await getRow('sessions', sessionId))) throw new InvariantError(`No session ${sessionId}`);
     const now = Date.now();

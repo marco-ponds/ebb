@@ -83,6 +83,8 @@ export function StartScreen() {
     try {
       await startSession();
       navigate('#/live');
+    } catch {
+      showToast({ message: "Couldn't start a session. Please try again." });
     } finally {
       setStarting(false);
     }

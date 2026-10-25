@@ -1,3 +1,4 @@
+import { newId } from '../lib/uuid';
 import { InvariantError } from './errors';
 import { runWrite, write } from './queue';
 import { findActiveSession, getRow, rowsOf } from './reads';
@@ -13,7 +14,7 @@ async function requireSession(id: string): Promise<Session> {
 }
 
 export function startSession(now: number = Date.now()): Promise<Session> {
-  const id = crypto.randomUUID(); // chosen once: a retried write must commit the row the overlay showed
+  const id = newId(); // chosen once: a retried write must commit the row the overlay showed
   return runWrite(async () => {
     if (await findActiveSession()) throw new InvariantError('A session is already active');
     const session: Session = {
