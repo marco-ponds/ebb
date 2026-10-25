@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { startContraction, stopContraction } from '../../db/contractions';
 import type { Contraction } from '../../db/types';
 import { formatSpoken } from '../../domain/format';
+import { setRatingFor } from './rating';
 import { hapticStart, hapticStop } from './haptics';
 
 export const DEBOUNCE_MS = 600;
@@ -22,9 +23,12 @@ export function useContractionToggle(sessionId: string, active: Contraction | nu
     const refused = () => setProblem(DIDNT_APPLY);
     if (active) {
       hapticStop(haptics);
-      void stopContraction(active.id, at).then((c) =>
-        setAnnouncement(`Contraction ended, lasted ${formatSpoken((c.endAt ?? at) - c.startAt)}`),
-      ).catch(refused);
+      void stopContraction(active.id, at)
+        .then((c) => {
+          setAnnouncement(`Contraction ended, lasted ${formatSpoken((c.endAt ?? at) - c.startAt)}`);
+          setRatingFor(c.id); // the strength card follows a stop made here
+        })
+        .catch(refused);
     } else {
       hapticStart(haptics);
       void startContraction(sessionId, at)
