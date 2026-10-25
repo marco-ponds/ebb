@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Placeholder mark: lowercase "ebb" drawn as stroked paths (no font dependency), lavender on Dusk. -->
+  <rect width="512" height="512" fill="#1B1929"/>
+  <g transform="translate(256 256) scale(0.8) translate(-288 -249)" fill="none" stroke="#CBBBF4" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <!-- e -->
+    <path d="M 98 262 H 190 C 190 226 170 206 144 206 C 114 206 96 230 96 262 C 96 294 114 318 146 318 C 166 318 180 310 190 298"/>
+    <!-- b -->
+    <path d="M 252 180 V 318"/>
+    <path d="M 252 262 C 252 226 270 206 296 206 C 322 206 340 230 340 262 C 340 294 322 318 296 318 C 270 318 252 298 252 262 Z"/>
+    <!-- b -->
+    <path d="M 392 180 V 318"/>
+    <path d="M 392 262 C 392 226 410 206 436 206 C 462 206 480 230 480 262 C 480 294 462 318 436 318 C 410 318 392 298 392 262 Z"/>
+  </g>
+</svg>

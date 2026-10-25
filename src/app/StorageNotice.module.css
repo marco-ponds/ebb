@@ -1,0 +1,11 @@
+.notice {
+  background: var(--tint-butter);
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.page {
+  padding: var(--gutter);
+}

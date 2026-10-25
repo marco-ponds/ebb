@@ -1,0 +1,18 @@
+.text {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.actions > * {
+  flex: 1;
+}
