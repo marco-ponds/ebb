@@ -1,0 +1,36 @@
+.host {
+  position: fixed;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 480px;
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-button);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 800;
+  pointer-events: auto;
+}
+
+.action {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--lavender);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
