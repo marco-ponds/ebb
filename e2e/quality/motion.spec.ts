@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { openApp } from './states';
+import { openApp, pauseGlowAtPeak } from './states';
 
 const hero = (page: Page) => page.getByTestId('hero');
 const heroButton = (page: Page) => hero(page).getByRole('button');
@@ -101,6 +101,8 @@ test.describe('motion allowed', () => {
     if (!box) throw new Error('no hero box');
     expect(Math.round(box.width)).toBe(300);
     expect(Math.round(box.height)).toBe(300);
+    // Probe at the glow's peak (420 px disc, 210 px radius), so the 30 px probe is well inside the disc.
+    await pauseGlowAtPeak(page);
     const insideButton = await page.evaluate(
       ([x, y]) => document.querySelector('[data-testid="hero"] button')?.contains(document.elementFromPoint(x, y)) ?? false,
       [box.x + box.width / 2, box.y - 30],

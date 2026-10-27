@@ -131,20 +131,24 @@ export function SettingsScreen() {
               ) : null}
               {showTiming ? (
                 <div className={styles.timing}>
-                  <span className={styles.timingLabel} aria-hidden="true">
+                  <span className={styles.timingLabel} id="settings-breathe-in">
                     Breathe in
                   </span>
                   <Segmented
                     label="Breathe in"
+                    labelledBy="settings-breathe-in"
+                    columns={3}
                     options={BREATHE_OPTIONS}
                     value={String(settings.breatheInSeconds)}
                     onChange={(v) => void updateSettings({ breatheInSeconds: Number(v) })}
                   />
-                  <span className={styles.timingLabel} aria-hidden="true">
+                  <span className={styles.timingLabel} id="settings-breathe-out">
                     Breathe out
                   </span>
                   <Segmented
                     label="Breathe out"
+                    labelledBy="settings-breathe-out"
+                    columns={3}
                     options={BREATHE_OPTIONS}
                     value={String(settings.breatheOutSeconds)}
                     onChange={(v) => void updateSettings({ breatheOutSeconds: Number(v) })}
