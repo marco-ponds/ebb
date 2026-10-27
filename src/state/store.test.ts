@@ -31,6 +31,17 @@ describe('initStore', () => {
     expect(await getDb().settings.count()).toBe(1);
   });
 
+  it('fills the breathe defaults when the stored settings row predates them', async () => {
+    await getDb().open();
+    const { breatheInSeconds: _i, breatheOutSeconds: _o, ...v1 } = DEFAULT_SETTINGS;
+    void _i;
+    void _o;
+    await getDb().settings.put(v1 as never, 'singleton');
+    await initStore();
+    expect(state().settings.breatheInSeconds).toBe(4);
+    expect(state().settings.breatheOutSeconds).toBe(4);
+  });
+
   it('picks up an active session already on disk', async () => {
     const s = await startSession(1000);
     const c = await startContraction(s.id, 2000);

@@ -80,6 +80,16 @@ test('toggles persist across a reload', async ({ page }) => {
   }
 });
 
+test('breathing glow timing is stored and the page does not scroll sideways at 195 px', async ({ page }) => {
+  await openSettings(page);
+  await page.getByRole('radiogroup', { name: 'Breathe out' }).getByRole('radio', { name: '3 s' }).click();
+  await page.getByRole('radiogroup', { name: 'Breathe in' }).getByRole('radio', { name: '7 s' }).click();
+  await expect.poll(async () => (await readDb(page)).settings).toMatchObject({ breatheInSeconds: 7, breatheOutSeconds: 3 });
+  await page.setViewportSize({ width: 195, height: 422 });
+  const fits = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  expect(fits).toBe(true);
+});
+
 test('Breathing glow off hides the breathing caption on Live', async ({ page }) => {
   await page.goto('/');
   await waitForDb(page);

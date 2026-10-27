@@ -201,6 +201,15 @@ describe('settings', () => {
     expect(next).toEqual({ ...DEFAULT_SETTINGS, theme: 'day' });
     expect(await undoLast()).toBe('start');
   });
+
+  it('a stored row lacking the breathe fields reads and updates with 4/4', async () => {
+    const { breatheInSeconds: _i, breatheOutSeconds: _o, ...v1 } = DEFAULT_SETTINGS;
+    void _i;
+    void _o;
+    await getDb().settings.put(v1 as never, 'singleton');
+    expect(await getSettings()).toMatchObject({ breatheInSeconds: 4, breatheOutSeconds: 4 });
+    expect(await updateSettings({ theme: 'day' })).toMatchObject({ theme: 'day', breatheInSeconds: 4, breatheOutSeconds: 4 });
+  });
 });
 
 describe('undo', () => {

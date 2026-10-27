@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { SCREEN_STATES, SETTLE_MS, openApp } from './states';
+import { SCREEN_STATES, SETTLE_MS, openApp, pauseGlowAtPeak } from './states';
 
 const hero = (page: Page) => page.getByTestId('hero');
 const heroButton = (page: Page) => hero(page).getByRole('button');
@@ -32,6 +32,27 @@ test.describe('large text (200 % zoom reflow)', () => {
     await heroButton(page).scrollIntoViewIfNeeded();
     await heroButton(page).click();
     await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    // Check at the glow's peak, where it is widest, not at the small inhale frame.
+    await pauseGlowAtPeak(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  });
+
+  test('Settings: no segmented option label overflows its segment at 200 % zoom, and every option is at least 48 x 48', async ({ page }) => {
+    await openApp(page, 'history-only', '#/settings');
+    await expect(page.getByRole('radiogroup', { name: 'Breathe in' })).toBeVisible();
+    const report = await page.evaluate(() => {
+      const options = Array.from(document.querySelectorAll<HTMLElement>('[role="radiogroup"] [role="radio"]'));
+      return {
+        count: options.length,
+        overflowing: options.filter((o) => o.scrollWidth > o.clientWidth).map((o) => o.textContent),
+        small: options
+          .filter((o) => o.getBoundingClientRect().width < 47.5 || o.getBoundingClientRect().height < 47.5)
+          .map((o) => o.textContent),
+        sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+    expect(report.count).toBeGreaterThan(10);
+    expect(report).toMatchObject({ overflowing: [], small: [], sideways: false });
   });
 });
 
@@ -53,6 +74,34 @@ test.describe('landscape phone (844 x 390)', () => {
     }
     const timeline = await page.getByRole('region', { name: 'Last hour' }).boundingBox();
     expect(timeline?.x ?? 0).toBeGreaterThanOrEqual(half - 1);
+  });
+
+  test('while contracting, the hero slot clips the glow sideways and the button stays in the left half', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    await expect(page.locator('[data-slot="hero"]')).toHaveCSS('overflow-x', 'clip');
+    const box = await heroButton(page).boundingBox();
+    if (!box) throw new Error('no hero box');
+    expect(box.x + box.width).toBeLessThanOrEqual(422);
+  });
+
+  test('the contracting glow at its peak adds no vertical scroll', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    // Pause the glow at its computed peak, where it is largest.
+    await pauseGlowAtPeak(page);
+    const withGlow = await page.evaluate(() => document.documentElement.scrollHeight);
+    const without = await page.evaluate(() => {
+      const g = document.querySelector<HTMLElement>('[data-glow]');
+      if (!g) throw new Error('no glow');
+      g.style.display = 'none';
+      return document.documentElement.scrollHeight;
+    });
+    expect(withGlow).toBe(without);
   });
 });
 
@@ -79,6 +128,40 @@ test.describe('phone portrait (390 x 844)', () => {
       return out;
     });
     expect(lines).toEqual({ 'Time apart': 1, Lasting: 1 });
+  });
+
+  test('no sideways scroll while contracting with the 420 px glow', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    // At the peak the glow is 420 px, wider than the 390 px screen: only the clip keeps it from scrolling.
+    await pauseGlowAtPeak(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
+  test('Settings: the six Breathe in options form an even 3 + 3 grid of at least 48 x 48 targets', async ({ page }) => {
+    await openApp(page, 'history-only', '#/settings');
+    const radios = page.getByRole('radiogroup', { name: 'Breathe in' }).getByRole('radio');
+    await expect(radios).toHaveCount(6);
+    const boxes = await radios.evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y), w: r.width, h: r.height };
+      }),
+    );
+    const rows = new Map<number, number[]>();
+    for (const b of boxes) rows.set(b.y, [...(rows.get(b.y) ?? []), b.x]);
+    expect(rows.size).toBe(2);
+    for (const xs of rows.values()) expect(xs).toHaveLength(3);
+    const [first, second] = [...rows.values()];
+    expect(first).toEqual(second);
+    const widths = new Set(boxes.map((b) => Math.round(b.w)));
+    expect(widths.size).toBe(1);
+    for (const b of boxes) {
+      expect(b.w).toBeGreaterThanOrEqual(48);
+      expect(b.h).toBeGreaterThanOrEqual(48);
+    }
   });
 
   // Every screen and sheet: all buttons are at least 48 x 48 and no rendered text is smaller than 12 px.

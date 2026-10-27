@@ -5,8 +5,10 @@ import { useUpdateReady } from '../../app/swUpdate';
 import { goBack } from '../../app/router';
 import { isWakeLockSupported } from '../../app/wakeLock';
 import { Card, IconButton, SafetyLine, Segmented, Switch } from '../../components';
+import { BREATHE_SECONDS } from '../../db/defaults';
 import { updateSettings } from '../../db/settings';
 import type { IntensityScale, Theme } from '../../db/types';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useSettings } from '../../state/hooks';
 import { useAppStore } from '../../state/store';
 import { DataSection } from './DataSection';
@@ -23,6 +25,8 @@ const LOOK: Array<{ value: Theme; label: string }> = [
   { value: 'day', label: 'Day' },
   { value: 'system', label: 'Match phone' },
 ];
+
+const BREATHE_OPTIONS = BREATHE_SECONDS.map((n) => ({ value: String(n), label: `${n} s` }));
 
 function InstallSection() {
   const { kind } = useInstallHint();
@@ -45,6 +49,8 @@ export function SettingsScreen() {
   const settings = useSettings();
   const active = useAppStore((s) => s.activeSession !== null);
   const updateReady = useUpdateReady();
+  const reducedMotion = useReducedMotion();
+  const showTiming = settings.breathingGlow && !reducedMotion;
 
   return (
     <main className={styles.page}>
@@ -112,10 +118,43 @@ export function SettingsScreen() {
               <Switch
                 tone="mint"
                 label="Breathing glow"
-                description="Slow pulse during a contraction"
+                description={
+                  showTiming
+                    ? `Slow pulse during a contraction · in ${settings.breatheInSeconds} s, out ${settings.breatheOutSeconds} s`
+                    : 'Slow pulse during a contraction'
+                }
                 checked={settings.breathingGlow}
                 onChange={(on) => void updateSettings({ breathingGlow: on })}
               />
+              {reducedMotion ? (
+                <p className={styles.help}>Your phone is set to reduce motion, so the glow stays off</p>
+              ) : null}
+              {showTiming ? (
+                <div className={styles.timing}>
+                  <span className={styles.timingLabel} id="settings-breathe-in">
+                    Breathe in
+                  </span>
+                  <Segmented
+                    label="Breathe in"
+                    labelledBy="settings-breathe-in"
+                    columns={3}
+                    options={BREATHE_OPTIONS}
+                    value={String(settings.breatheInSeconds)}
+                    onChange={(v) => void updateSettings({ breatheInSeconds: Number(v) })}
+                  />
+                  <span className={styles.timingLabel} id="settings-breathe-out">
+                    Breathe out
+                  </span>
+                  <Segmented
+                    label="Breathe out"
+                    labelledBy="settings-breathe-out"
+                    columns={3}
+                    options={BREATHE_OPTIONS}
+                    value={String(settings.breatheOutSeconds)}
+                    onChange={(v) => void updateSettings({ breatheOutSeconds: Number(v) })}
+                  />
+                </div>
+              ) : null}
             </div>
           </li>
         </ul>

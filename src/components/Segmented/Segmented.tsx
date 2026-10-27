@@ -3,12 +3,16 @@ import styles from './Segmented.module.css';
 
 export interface SegmentedProps {
   label: string;
+  /** Id of a visible element that names the group; wins over `label`. */
+  labelledBy?: string;
+  /** Lay the options out as an even grid with this many columns (fewer when too narrow for 48 px targets). */
+  columns?: 3;
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
 }
 
-export function Segmented({ label, options, value, onChange }: SegmentedProps) {
+export function Segmented({ label, labelledBy, columns, options, value, onChange }: SegmentedProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const onKeyDown = (e: KeyboardEvent, index: number) => {
@@ -27,7 +31,13 @@ export function Segmented({ label, options, value, onChange }: SegmentedProps) {
   const selectedIndex = Math.max(0, options.findIndex((o) => o.value === value));
 
   return (
-    <div role="radiogroup" aria-label={label} className={styles.group}>
+    <div
+      role="radiogroup"
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
+      data-columns={columns}
+      className={styles.group}
+    >
       {options.map((o, i) => (
         <button
           key={o.value}

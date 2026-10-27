@@ -1,6 +1,6 @@
 import { liveQuery, type Subscription } from 'dexie';
 import { create } from 'zustand';
-import { DEFAULT_SETTINGS } from '../db/defaults';
+import { DEFAULT_SETTINGS, withSettingsDefaults } from '../db/defaults';
 import { getQueueSnapshot, setMemoryMode, subscribeQueue, type StorageStatus } from '../db/queue';
 import { createDb, getDb, setDb } from '../db/schema';
 import { getSettings } from '../db/settings';
@@ -54,14 +54,14 @@ function derive(): void {
   );
   const undoRecord = queue.overlay.filter((o) => o.table === 'undo').slice(-1)[0];
   const [settings] = mergeOverlay(
-    [{ id: 'singleton', ...(lastSnapshot.settings ?? DEFAULT_SETTINGS) }],
+    [{ id: 'singleton', ...withSettingsDefaults(lastSnapshot.settings ?? DEFAULT_SETTINGS) }],
     queue.overlay,
     'settings',
   );
   useAppStore.setState({
     activeSession,
     activeContraction: open[0] ?? null,
-    settings: settings ? stripId(settings) : structuredClone(DEFAULT_SETTINGS),
+    settings: settings ? withSettingsDefaults(stripId(settings)) : structuredClone(DEFAULT_SETTINGS),
     storage,
     undo: undoRecord ? (undoRecord.value as UndoEntry | null) : (lastSnapshot.undo ?? null),
   });

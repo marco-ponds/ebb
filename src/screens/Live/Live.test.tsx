@@ -26,6 +26,7 @@ beforeEach(async () => {
   await initStore();
 });
 afterEach(async () => {
+  vi.useRealTimers();
   teardownStore();
   vi.restoreAllMocks();
   window.location.hash = '';
@@ -52,6 +53,9 @@ describe('LiveScreen', () => {
   });
 
   it('rests with no contractions: label, empty caption, dashes and "Not enough yet"', async () => {
+    // The session link reads "Tonight" only in the evening, so pin the clock (Date only; timers stay real).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 27, 21, 0, 0));
     await sessionStartedAgo(20 * MIN);
     render(<LiveScreen />);
     expect(hero()).toHaveAttribute('data-state', 'resting');

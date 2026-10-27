@@ -9,11 +9,13 @@ export interface LiveHeroProps {
   active: Contraction | null;
   now: number;
   glow: boolean;
+  breatheInSeconds: number;
+  breatheOutSeconds: number;
   onPress: () => void;
 }
 
 /** The resting / contracting toggle. `data-state` and `data-testid="hero"` sit on the wrapper (HeroButton takes no extra props). */
-export function LiveHero({ lastStartAt, active, now, glow, onPress }: LiveHeroProps) {
+export function LiveHero({ lastStartAt, active, now, glow, breatheInSeconds, breatheOutSeconds, onPress }: LiveHeroProps) {
   if (active) {
     const elapsed = Math.max(0, now - active.startAt);
     return (
@@ -22,6 +24,7 @@ export function LiveHero({ lastStartAt, active, now, glow, onPress }: LiveHeroPr
           tone="peach"
           shape="circle"
           glow={glow}
+          glowTiming={{ inSeconds: breatheInSeconds, outSeconds: breatheOutSeconds }}
           onPress={onPress}
           ariaLabel={`End contraction. ${formatSpoken(elapsed)} so far`}
         >

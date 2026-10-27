@@ -69,6 +69,19 @@
   color: var(--text-muted);
 }
 
+.timing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.timingLabel {
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
 .addButton {
   width: 100%;
   margin-top: var(--space-2);
