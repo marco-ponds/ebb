@@ -1,6 +1,6 @@
 ---
 feature: breathing-glow
-status: approved
+status: done
 ---
 # Breathing glow: configurable in/out timing and a larger, more visible glow
 
