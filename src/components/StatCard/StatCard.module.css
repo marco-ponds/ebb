@@ -30,4 +30,10 @@
 .card[data-dimmed='true'] {
   --text-muted: var(--text);
   --text-faint: var(--text);
+  /* Opaque, so the glow behind never shows through: the same look as 55 % over --bg. */
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+}
+
+.card[data-dimmed='true'] > * {
+  opacity: 0.55;
 }

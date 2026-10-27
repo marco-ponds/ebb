@@ -10,8 +10,10 @@ describe('StatCard', () => {
     expect(screen.getByText('4m 40s')).toHaveStyle({ whiteSpace: 'nowrap' });
   });
 
-  it('dims to 0.55 opacity', () => {
+  it('marks itself dimmed without putting 0.55 opacity on the card (the CSS dims its children)', () => {
     const { container } = render(<StatCard label="Lasting" value="—" dimmed />);
-    expect(container.firstChild).toHaveStyle({ opacity: '0.55' });
+    const card = container.firstChild as HTMLElement;
+    expect(card).toHaveAttribute('data-dimmed', 'true');
+    expect(card.style.opacity).toBe('');
   });
 });

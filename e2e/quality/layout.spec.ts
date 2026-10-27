@@ -32,6 +32,7 @@ test.describe('large text (200 % zoom reflow)', () => {
     await heroButton(page).scrollIntoViewIfNeeded();
     await heroButton(page).click();
     await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   });
 });
 
@@ -53,6 +54,17 @@ test.describe('landscape phone (844 x 390)', () => {
     }
     const timeline = await page.getByRole('region', { name: 'Last hour' }).boundingBox();
     expect(timeline?.x ?? 0).toBeGreaterThanOrEqual(half - 1);
+  });
+
+  test('while contracting, the hero slot clips the glow sideways and the button stays in the left half', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    await expect(page.locator('[data-slot="hero"]')).toHaveCSS('overflow-x', 'clip');
+    const box = await heroButton(page).boundingBox();
+    if (!box) throw new Error('no hero box');
+    expect(box.x + box.width).toBeLessThanOrEqual(422);
   });
 });
 
@@ -79,6 +91,14 @@ test.describe('phone portrait (390 x 844)', () => {
       return out;
     });
     expect(lines).toEqual({ 'Time apart': 1, Lasting: 1 });
+  });
+
+  test('no sideways scroll while contracting with the 420 px glow', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
   // Every screen and sheet: all buttons are at least 48 x 48 and no rendered text is smaller than 12 px.

@@ -57,7 +57,7 @@
   /* Motion */
   --dur-crossfade: 220ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --glow-duration: 8s;
+  --glow-size: 420px;
 }
 
 [data-theme='day'] {

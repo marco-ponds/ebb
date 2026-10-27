@@ -69,23 +69,18 @@
 
 .glow {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  width: var(--glow-size);
+  height: var(--glow-size);
+  /* Margins centre it: the animation owns transform, and nothing translates. */
+  margin: calc(var(--glow-size) / -2);
   z-index: 1;
-  border-radius: inherit;
-  background: var(--hero-colour);
-  opacity: 0.35;
-  animation: breathe var(--glow-duration) ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(0.94);
-    opacity: 0.35;
-  }
-
-  50% {
-    transform: scale(1.04);
-    opacity: 0.9;
-  }
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle closest-side, var(--hero-colour) 80%, transparent 100%);
+  opacity: 0.4;
+  transform: scale(0.7);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
