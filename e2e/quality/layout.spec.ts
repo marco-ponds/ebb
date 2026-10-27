@@ -66,6 +66,30 @@ test.describe('landscape phone (844 x 390)', () => {
     if (!box) throw new Error('no hero box');
     expect(box.x + box.width).toBeLessThanOrEqual(422);
   });
+
+  test('the contracting glow at its peak adds no vertical scroll', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await heroButton(page).click();
+    await expect(hero(page)).toHaveAttribute('data-state', 'contracting');
+    await expect(page.locator('[data-glow]')).toHaveCount(1);
+    // Pause every running animation at the middle of its cycle, where the glow is largest.
+    const withGlow = await page.evaluate(() => {
+      for (const a of document.getAnimations()) {
+        const t = a.effect?.getComputedTiming();
+        const d = typeof t?.duration === 'number' ? t.duration : 0;
+        a.pause();
+        a.currentTime = d / 2;
+      }
+      return document.documentElement.scrollHeight;
+    });
+    const without = await page.evaluate(() => {
+      const g = document.querySelector<HTMLElement>('[data-glow]');
+      if (!g) throw new Error('no glow');
+      g.style.display = 'none';
+      return document.documentElement.scrollHeight;
+    });
+    expect(withGlow).toBe(without);
+  });
 });
 
 test.describe('phone portrait (390 x 844)', () => {
