@@ -1,6 +1,7 @@
 // Reads for write ops: the database plus whatever is parked or already written by the op in flight,
 // so an op always sees the state the user sees.
 import { intendedWrite, intendedWrites } from './queue';
+import { withSettingsDefaults } from './defaults';
 import { getDb } from './schema';
 import type { Contraction, EbbEvent, Session, Settings, UndoEntry } from './types';
 
@@ -48,6 +49,6 @@ export async function getUndoEntry(): Promise<UndoEntry | undefined> {
 
 export async function getSettingsRow(): Promise<Settings | undefined> {
   const intended = intendedWrite('settings', 'singleton');
-  if (intended) return (intended.value ?? undefined) as Settings | undefined;
-  return getDb().settings.get('singleton');
+  const row = intended ? ((intended.value ?? undefined) as Settings | undefined) : await getDb().settings.get('singleton');
+  return row ? withSettingsDefaults(row) : undefined;
 }

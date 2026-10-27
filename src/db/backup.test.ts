@@ -131,6 +131,32 @@ describe('parseBackup', () => {
     expect(parseBackup(JSON.stringify({ ...b, settings: { ...b.settings, theme: 'neon' } }))).toEqual(NOT_BACKUP);
     expect(parseBackup(JSON.stringify({ ...b, sessions: 'many' }))).toEqual(NOT_BACKUP);
   });
+
+  const withoutBreath = (b: Backup) => {
+    const { breatheInSeconds: _i, breatheOutSeconds: _o, ...rest } = b.settings;
+    void _i;
+    void _o;
+    return { ...b, settings: rest };
+  };
+
+  it('accepts settings without the breathe fields and fills them as 4', async () => {
+    const parsed = parseBackup(JSON.stringify(withoutBreath(await good())));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.backup.settings).toMatchObject({ breatheInSeconds: 4, breatheOutSeconds: 4 });
+  });
+
+  it.each([3, 8])('accepts breathe seconds of %i', async (n) => {
+    const b = await good();
+    const parsed = parseBackup(JSON.stringify({ ...b, settings: { ...b.settings, breatheInSeconds: n, breatheOutSeconds: n } }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.backup.settings).toMatchObject({ breatheInSeconds: n, breatheOutSeconds: n });
+  });
+
+  it.each([2, 9, 4.5, '4', null])('rejects breathe seconds of %j', async (bad) => {
+    const b = await good();
+    expect(parseBackup(JSON.stringify({ ...b, settings: { ...b.settings, breatheInSeconds: bad } }))).toEqual(NOT_BACKUP);
+    expect(parseBackup(JSON.stringify({ ...b, settings: { ...b.settings, breatheOutSeconds: bad } }))).toEqual(NOT_BACKUP);
+  });
 });
 
 describe('restoreBackup', () => {
@@ -203,6 +229,17 @@ describe('restoreBackup', () => {
     expect(snap.sessions).toHaveLength(oldSessions); // taken before the swap
     expect(await getDb().sessions.count()).toBe(0);
     expect(await getSettings()).toMatchObject({ theme: 'day', onboardedAt: 777 });
+  });
+
+  it('replace with a backup lacking the breathe fields stores 4/4', async () => {
+    fakeCaches();
+    const full = await buildBackup(NOON);
+    const { breatheInSeconds: _i, breatheOutSeconds: _o, ...rest } = full.settings;
+    void _i;
+    void _o;
+    await restoreBackup({ ...full, settings: rest } as Backup, 'replace');
+    const stored = await getDb().settings.get('singleton');
+    expect(stored).toMatchObject({ breatheInSeconds: 4, breatheOutSeconds: 4 });
   });
 });
 
