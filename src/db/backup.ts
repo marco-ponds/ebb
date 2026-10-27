@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from './defaults';
+import { DEFAULT_SETTINGS, withSettingsDefaults } from './defaults';
 import { InvariantError } from './errors';
 import { runWrite } from './queue';
 import { findActiveSession, getSettingsRow, rowsOf } from './reads';
@@ -122,6 +122,8 @@ const isThreshold = (v: unknown) => {
   return false;
 };
 
+const optBreath = (x: unknown) => x === undefined || (Number.isInteger(x) && (x as number) >= 3 && (x as number) <= 8);
+
 const isSettings = (v: unknown) =>
   shaped(v, {
     thresholds: (x) => Array.isArray(x) && x.every(isThreshold),
@@ -130,6 +132,8 @@ const isSettings = (v: unknown) =>
     keepAwake: isBool,
     haptics: isBool,
     breathingGlow: isBool,
+    breatheInSeconds: optBreath,
+    breatheOutSeconds: optBreath,
     lastBackupAt: isNumOrNull,
     onboardedAt: isNumOrNull,
   });
@@ -153,7 +157,7 @@ export function parseBackup(text: string): ParsedBackup {
   if (![...(contractions as Contraction[]), ...(events as EbbEvent[])].every((r) => ids.has(r.sessionId))) return REJECTED;
   return {
     ok: true,
-    backup: data as unknown as Backup,
+    backup: { ...data, settings: withSettingsDefaults(settings as Partial<Settings>) } as unknown as Backup,
     counts: { sessions: sessions.length, contractions: contractions.length, events: events.length },
   };
 }
@@ -211,7 +215,7 @@ export function restoreBackup(backup: Backup, mode: 'merge' | 'replace'): Promis
         await db.sessions.bulkPut(incoming.sessions);
         await db.contractions.bulkPut(incoming.contractions);
         await db.events.bulkPut(incoming.events);
-        await db.settings.put({ ...backup.settings, onboardedAt: device?.onboardedAt ?? null }, 'singleton');
+        await db.settings.put({ ...withSettingsDefaults(backup.settings), onboardedAt: device?.onboardedAt ?? null }, 'singleton');
         result.added = incoming.sessions.length + incoming.contractions.length + incoming.events.length;
         return result;
       }

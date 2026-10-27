@@ -110,6 +110,8 @@ test('Replace swaps the data and saves a copy of the old data first', async ({ p
   await page.getByRole('button', { name: 'Replace' }).click();
   await expect(page.getByText('A copy of your current data was saved first')).toBeVisible();
   expect(counts(await readDb(page))).toEqual([1, 1, 0]);
+  // The fixture predates the breathing timings: Replace stores the defaults.
+  expect((await readDb(page)).settings).toMatchObject({ breatheInSeconds: 4, breatheOutSeconds: 4 });
   const saved = await page.evaluate(async () => (await (await caches.open('ebb-backups')).keys()).length);
   expect(saved).toBeGreaterThanOrEqual(1);
 });

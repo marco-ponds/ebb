@@ -71,6 +71,8 @@ export interface Settings {
   keepAwake: boolean;
   haptics: boolean;
   breathingGlow: boolean;
+  breatheInSeconds: number;
+  breatheOutSeconds: number;
   lastBackupAt: number | null;
   onboardedAt: number | null;
 }

@@ -14,6 +14,16 @@ export const DEFAULT_SETTINGS: Settings = {
   keepAwake: true,
   haptics: true,
   breathingGlow: true,
+  breatheInSeconds: 4,
+  breatheOutSeconds: 4,
   lastBackupAt: null,
   onboardedAt: null,
 };
+
+/** The allowed breathe-in / breathe-out durations, in seconds. */
+export const BREATHE_SECONDS = [3, 4, 5, 6, 7, 8] as const;
+
+/** Fills any settings field a stored row or an older backup lacks with its default. */
+export function withSettingsDefaults(row: Partial<Settings>): Settings {
+  return { ...structuredClone(DEFAULT_SETTINGS), ...row };
+}
