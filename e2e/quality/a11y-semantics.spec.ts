@@ -36,8 +36,11 @@ test.describe('roles', () => {
     for (const el of await switches.all()) {
       expect(['true', 'false']).toContain(await el.getAttribute('aria-checked'));
     }
+    await expect(page.getByRole('radiogroup', { name: 'Breathe in' })).toBeVisible();
+    await expect(page.getByRole('radiogroup', { name: 'Breathe out' })).toBeVisible();
     await page.getByRole('switch', { name: 'Breathing glow' }).click();
     await expect(page.getByRole('switch', { name: 'Breathing glow' })).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByRole('radiogroup', { name: 'Breathe in' })).toHaveCount(0);
     await expect(page.getByRole('radiogroup', { name: 'Strength scale' })).toBeVisible();
     await expect(page.getByRole('radiogroup', { name: 'Look' })).toBeVisible();
   });

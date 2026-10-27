@@ -1,5 +1,6 @@
 .group {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-button);

@@ -237,7 +237,9 @@ describe('scale, look and toggles', () => {
     await boot();
     expect(screen.getByRole('switch', { name: 'Keep screen awake' })).toHaveAccessibleDescription('During a session');
     expect(screen.getByRole('switch', { name: 'Gentle buzz' })).toHaveAccessibleDescription('On start and stop');
-    expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription('Slow pulse during a contraction');
+    expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription(
+      'Slow pulse during a contraction · in 4 s, out 4 s',
+    );
     for (const n of ['Keep screen awake', 'Gentle buzz', 'Breathing glow']) {
       expect(screen.getByRole('switch', { name: n })).toHaveAttribute('aria-checked', 'true');
     }
@@ -260,6 +262,54 @@ describe('scale, look and toggles', () => {
     vi.stubGlobal('navigator', fakeNavigator({ wakeLock: { request: vi.fn() } }));
     await boot();
     expect(screen.queryByText(/can't keep the screen on/)).toBeNull();
+  });
+});
+
+describe('breathing glow timing', () => {
+  const IDLE = 'Slow pulse during a contraction';
+  const TIMING = `${IDLE} · in 4 s, out 4 s`;
+
+  it('shows the timing pickers and a description with the chosen seconds', async () => {
+    await boot();
+    expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription(TIMING);
+    for (const name of ['Breathe in', 'Breathe out']) {
+      const group = screen.getByRole('radiogroup', { name });
+      expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual(['3 s', '4 s', '5 s', '6 s', '7 s', '8 s']);
+      expect(within(group).getByRole('radio', { name: '4 s' })).toBeChecked();
+    }
+    expect(screen.getAllByText('Breathe in').length).toBeGreaterThan(0);
+  });
+
+  it('stores a chosen duration and updates the description', async () => {
+    await boot();
+    await userEvent.click(within(screen.getByRole('radiogroup', { name: 'Breathe in' })).getByRole('radio', { name: '6 s' }));
+    await waitFor(async () => expect((await getSettings()).breatheInSeconds).toBe(6));
+    expect((await getSettings()).breatheOutSeconds).toBe(4);
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription(`${IDLE} · in 6 s, out 4 s`),
+    );
+  });
+
+  it('removes the pickers when the glow is switched off', async () => {
+    await boot();
+    await userEvent.click(screen.getByRole('switch', { name: 'Breathing glow' }));
+    await waitFor(() => expect(screen.queryByRole('radiogroup', { name: 'Breathe in' })).toBeNull());
+    expect(screen.queryByRole('radiogroup', { name: 'Breathe out' })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription(IDLE);
+  });
+
+  it('explains reduced motion instead of showing the pickers', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q === '(prefers-reduced-motion: reduce)',
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    await boot();
+    expect(screen.getByText('Your phone is set to reduce motion, so the glow stays off')).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Breathe in' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Breathe out' })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Breathing glow' })).toHaveAccessibleDescription(IDLE);
   });
 });
 
