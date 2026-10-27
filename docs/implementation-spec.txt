@@ -348,8 +348,13 @@ Ebb — Contraction Tracker: Implementation Spec
 
 
 
-       Breathing glow: an 8 s ease-in-out loop that scales 0.94 → 1.04 at 35 → 90 % opacity
-       behind the contraction button. It is disabled under prefers-reduced-motion and by
+       Breathing glow: a soft peach disc behind the contraction button that grows from 0.7
+       × to 1 × of 420 px (1.4 × the button; clipped by the screen, and by the left column
+       in landscape) at 40 → 90 % opacity as you breathe in, then shrinks and fades as you
+       breathe out. Breathe in and Breathe out are set separately in Settings (3–8 s each,
+       default 4 s + 4 s, an 8 s cycle). Ease-in-out, centred, starting on the inhale; a
+       timing change applies from the next contraction. The glow sits under the other
+       content and never takes taps. It is disabled under prefers-reduced-motion and by
        the Settings toggle.
        Transitions: 200–250 ms ease-out colour crossfade between resting and contracting.
        No bounces, shakes or flashes anywhere.
@@ -393,6 +398,9 @@ Ebb — Contraction Tracker: Implementation Spec
                                                  ( night | day | system ),
                                                   keepAwake , haptics ,
                                                   breathingGlow ,
+                                                  breatheInSeconds , breatheOutSeconds
+                                                  (3–8, default 4; backups without them
+                                                  restore with 4) ,
                                                   lastBackupAt? ,
                                                  onboardedAt?
 
@@ -771,7 +779,12 @@ Ebb — Contraction Tracker: Implementation Spec
 
 
 
-       SE-03 Toggles: Keep screen awake, Gentle buzz and Breathing glow, all on by default.
+       SE-03 Toggles: Keep screen awake, Gentle buzz and Breathing glow, all on by
+       default. While Breathing glow is on, Breathe in and Breathe out sit under it (3–8 s
+       each in 1 s steps, default 4 s) and its description shows the timing, e.g. "Slow
+       pulse during a contraction · in 4 s, out 4 s". Under reduced motion the pickers are
+       hidden and a help line reads "Your phone is set to reduce motion, so the glow stays
+       off".
        SE-04 Data: Back up everything (JSON), Restore from a backup (file input, preview
        counts, then Merge or Replace) and Delete all data… (rose text, typed confirmation
        "delete").
@@ -1124,8 +1137,9 @@ Ebb — Contraction Tracker: Implementation Spec
 
      Question from the brief                     Decision for v1
 
-     Breathing visual                            Yes, as the 8 s glow behind the contraction button;
-                                                 on by default, off under reduced motion
+     Breathing visual                            Yes, as the breathing glow behind the contraction
+                                                 button (4 s in, 4 s out by default, adjustable in
+                                                 Settings); on by default, off under reduced motion
 
      Name and identity                           Working name "Ebb", lowercase wordmark in
                                                  Nunito 900, lavender on Dusk
