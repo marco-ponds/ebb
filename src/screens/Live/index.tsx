@@ -130,7 +130,17 @@ function LiveSession({ session }: { session: Session }) {
       stats={rating ? null : <StatCards metrics={metrics} dimmed={contracting} />}
       averages={showInsights ? <AveragesCard metrics={metrics} enough={enough} /> : null}
       pattern={showInsights ? <PatternLine metrics={metrics} enough={enough} /> : null}
-      hero={<LiveHero lastStartAt={lastStartAt} active={active} now={now} glow={contracting && glow} onPress={toggle} />}
+      hero={
+        <LiveHero
+          lastStartAt={lastStartAt}
+          active={active}
+          now={now}
+          glow={contracting && glow}
+          breatheInSeconds={settings.breatheInSeconds}
+          breatheOutSeconds={settings.breatheOutSeconds}
+          onPress={toggle}
+        />
+      }
       caption={
         contracting && glow ? <p className={styles.breathe}>Breathe with the glow — in as it grows, out as it fades</p> : null
       }

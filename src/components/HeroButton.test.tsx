@@ -69,6 +69,30 @@ describe('HeroButton', () => {
     });
   });
 
+  it('snapshots the glow timing at mount and picks up a new one on the next mount', () => {
+    reducedMotion(false);
+    const props = { tone: 'peach', shape: 'circle', onPress: () => {}, ariaLabel: 'x' } as const;
+    const glow = () => screen.getByRole('button').querySelector('[data-glow]') as HTMLElement;
+    const { rerender } = render(<HeroButton {...props} glow glowTiming={{ inSeconds: 6, outSeconds: 3 }}>a</HeroButton>);
+    expect(glow().style.animationName).toBe('breathe-6-3');
+    expect(glow().style.animationDuration).toBe('9s');
+    rerender(<HeroButton {...props} glow glowTiming={{ inSeconds: 3, outSeconds: 8 }}>a</HeroButton>);
+    expect(glow().style.animationName).toBe('breathe-6-3');
+    expect(glow().style.animationDuration).toBe('9s');
+    rerender(<HeroButton {...props} glowTiming={{ inSeconds: 3, outSeconds: 8 }}>a</HeroButton>);
+    rerender(<HeroButton {...props} glow glowTiming={{ inSeconds: 3, outSeconds: 8 }}>a</HeroButton>);
+    expect(glow().style.animationName).toBe('breathe-3-8');
+    expect(glow().style.animationDuration).toBe('11s');
+  });
+
+  it('defaults the glow to 4 s in and 4 s out', () => {
+    reducedMotion(false);
+    render(<HeroButton tone="peach" shape="circle" onPress={() => {}} ariaLabel="x" glow>a</HeroButton>);
+    const g = screen.getByRole('button').querySelector('[data-glow]') as HTMLElement;
+    expect(g.style.animationName).toBe('breathe-4-4');
+    expect(g.style.animationDuration).toBe('8s');
+  });
+
   it('dims when asked', () => {
     render(<HeroButton tone="lavender" shape="rounded" onPress={() => {}} ariaLabel="x" dimmed>a</HeroButton>);
     expect(screen.getByRole('button')).toHaveAttribute('data-dimmed', 'true');

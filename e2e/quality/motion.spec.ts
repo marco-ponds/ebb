@@ -71,9 +71,41 @@ test.describe('motion allowed', () => {
     await expect(page.getByText(CAPTION)).toBeVisible();
     const style = await glow.evaluate((el) => {
       const cs = getComputedStyle(el);
-      return { duration: cs.animationDuration, iteration: cs.animationIterationCount, timing: cs.animationTimingFunction, state: cs.animationPlayState };
+      return { name: cs.animationName, duration: cs.animationDuration, iteration: cs.animationIterationCount, timing: cs.animationTimingFunction, state: cs.animationPlayState };
     });
-    expect(style).toEqual({ duration: '8s', iteration: 'infinite', timing: 'ease-in-out', state: 'running' });
+    expect(style).toEqual({ name: 'breathe-4-4', duration: '8s', iteration: 'infinite', timing: 'ease-in-out', state: 'running' });
+  });
+
+  test('the glow follows the chosen in/out timing, with a peak keyframe at in/(in+out)', async ({ page }) => {
+    await openApp(page, 'busy', '#/live', { breatheInSeconds: 6, breatheOutSeconds: 3 });
+    await startContraction(page);
+    const glow = page.locator('[data-glow]');
+    await expect(glow).toHaveCSS('animation-name', 'breathe-6-3');
+    await expect(glow).toHaveCSS('animation-duration', '9s');
+    const keyTexts = await page.evaluate(() => {
+      const rule = [...document.styleSheets]
+        .flatMap((s) => [...s.cssRules])
+        .find((r): r is CSSKeyframesRule => r instanceof CSSKeyframesRule && r.name === 'breathe-6-3');
+      return rule ? [...rule.cssRules].map((k) => (k as CSSKeyframeRule).keyText) : null;
+    });
+    expect(keyTexts).toContain('66.667%');
+  });
+
+  test('the 420 px glow never takes taps: the tap target stays the 300 px button', async ({ page }) => {
+    await openApp(page, 'busy', '#/live');
+    await startContraction(page);
+    const glow = page.locator('[data-glow]');
+    await expect(glow).toHaveCSS('pointer-events', 'none');
+    expect(await glow.evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(420);
+    const box = await heroButton(page).boundingBox();
+    if (!box) throw new Error('no hero box');
+    expect(Math.round(box.width)).toBe(300);
+    expect(Math.round(box.height)).toBe(300);
+    const insideButton = await page.evaluate(
+      ([x, y]) => document.querySelector('[data-testid="hero"] button')?.contains(document.elementFromPoint(x, y)) ?? false,
+      [box.x + box.width / 2, box.y - 30],
+    );
+    expect(insideButton).toBe(false);
   });
 
   test('with Breathing glow switched off there is no glow and no caption', async ({ page }) => {

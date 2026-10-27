@@ -61,7 +61,7 @@ test.describe('tracking loop', () => {
 
     // LT-03: header and stat cards at 55 %; averages, pattern, mini timeline hidden.
     await expect(page.locator('header')).toHaveCSS('opacity', '0.55');
-    await expect(page.getByText('Time apart').locator('..')).toHaveCSS('opacity', '0.55');
+    await expect(page.getByText('Time apart')).toHaveCSS('opacity', '0.55');
     await expect(page.getByText('Last 30 min')).toHaveCount(0);
     await expect(page.getByText('Last hour')).toHaveCount(0);
     const hero300 = await heroButton(page).boundingBox();
