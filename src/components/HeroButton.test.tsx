@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HeroButton } from '.';
+import { GLOW_FADE_MS } from './HeroButton/HeroButton';
 
 function reducedMotion(on: boolean) {
   vi.stubGlobal('matchMedia', () => ({
@@ -45,6 +46,43 @@ describe('HeroButton', () => {
     expect(screen.getByRole('button').querySelector('[data-glow]')).not.toBeNull();
     rerender(<HeroButton tone="lavender" shape="rounded" onPress={() => {}} ariaLabel="x">a</HeroButton>);
     expect(screen.getByRole('button').querySelector('[data-glow]')).toBeNull();
+  });
+
+  it('fades the glow out for one crossfade when the contraction ends, then unmounts it', () => {
+    vi.useFakeTimers();
+    try {
+      reducedMotion(false);
+      const props = { tone: 'peach', shape: 'circle', onPress: () => {}, ariaLabel: 'x' } as const;
+      const btn = () => screen.getByRole('button');
+      const { rerender } = render(<HeroButton {...props} glow>a</HeroButton>);
+      expect(btn().querySelector('[data-glow-leaving]')).toBeNull();
+      rerender(<HeroButton {...props}>a</HeroButton>);
+      const layer = btn().querySelector('[data-glow-leaving="true"]');
+      expect(layer).not.toBeNull();
+      expect(btn().querySelector('[data-glow]')).toBeNull();
+      act(() => void vi.advanceTimersByTime(GLOW_FADE_MS - 1));
+      expect(btn().querySelector('[data-glow-leaving]')).not.toBeNull();
+      act(() => void vi.advanceTimersByTime(1));
+      expect(btn().querySelector('[data-glow-leaving]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('starts a fresh glow if a contraction begins while the old one is fading', () => {
+    vi.useFakeTimers();
+    try {
+      reducedMotion(false);
+      const props = { tone: 'peach', shape: 'circle', onPress: () => {}, ariaLabel: 'x' } as const;
+      const { rerender } = render(<HeroButton {...props} glow glowTiming={{ inSeconds: 6, outSeconds: 3 }}>a</HeroButton>);
+      rerender(<HeroButton {...props}>a</HeroButton>);
+      rerender(<HeroButton {...props} glow glowTiming={{ inSeconds: 3, outSeconds: 8 }}>a</HeroButton>);
+      const g = screen.getByRole('button').querySelector('[data-glow]') as HTMLElement;
+      expect(g.style.animationName).toBe('breathe-3-8');
+      expect(screen.getByRole('button').querySelector('[data-glow-leaving]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('omits the glow under reduced motion', () => {

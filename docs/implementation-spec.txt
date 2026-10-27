@@ -338,7 +338,7 @@ Ebb — Contraction Tracker: Implementation Spec
        Touch targets: at least 48 × 48 px; the main button fills all spare vertical space (at least
        240 px tall).
        Halo: the hero button has two soft rings in its own colour, at 10 % (10 px) and 5 % (22
-       px). No drop shadows, no gradients.
+       px). No drop shadows, no gradients (the breathing glow's soft edge excepted).
 
 
 
@@ -348,14 +348,15 @@ Ebb — Contraction Tracker: Implementation Spec
 
 
 
-       Breathing glow: a soft peach disc behind the contraction button that grows from 0.7
-       × to 1 × of 420 px (1.4 × the button; clipped by the screen, and by the left column
-       in landscape) at 40 → 90 % opacity as you breathe in, then shrinks and fades as you
-       breathe out. Breathe in and Breathe out are set separately in Settings (3–8 s each,
-       default 4 s + 4 s, an 8 s cycle). Ease-in-out, centred, starting on the inhale; a
-       timing change applies from the next contraction. The glow sits under the other
-       content and never takes taps. It is disabled under prefers-reduced-motion and by
-       the Settings toggle.
+       Breathing glow: a soft peach disc behind the contraction button that grows from
+       0.7 × to 1 × of 420 px (1.4 × the button; clipped by the screen, and by the left
+       column in landscape) at 40 → 90 % opacity as you breathe in, then shrinks and fades
+       as you breathe out. Breathe in and Breathe out are set separately in Settings (3–8 s
+       each, default 4 s + 4 s, an 8 s cycle). Ease-in-out, centred, starting on the
+       inhale; a timing change applies from the next contraction or when you return to
+       Live. The glow sits under the other content and never takes taps; when a
+       contraction ends it fades out over about 220 ms. It is disabled under
+       prefers-reduced-motion and by the Settings toggle.
        Transitions: 200–250 ms ease-out colour crossfade between resting and contracting.
        No bounces, shakes or flashes anywhere.
        Icons: 2–2.4 px stroke, rounded caps and joins (Lucide is a good match). No emoji.

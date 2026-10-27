@@ -375,3 +375,24 @@ export const SCREEN_STATES: ScreenState[] = [
 
 /** Sheets finish their 220 ms entrance before a measurement that depends on colour or position. */
 export const SETTLE_MS = 400;
+
+/**
+ * Pauses the breathing-glow animation at its peak (largest, boldest frame), computed from the keyframe name
+ * `breathe-<in>-<out>` as in / (in + out) of the cycle, and returns the peak as a fraction of the cycle.
+ */
+export async function pauseGlowAtPeak(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const anims = document.getAnimations().filter((a) => /^breathe-\d+-\d+$/.test((a as CSSAnimation).animationName ?? ''));
+    if (anims.length === 0) throw new Error('no breathing glow animation');
+    let fraction = 0;
+    for (const a of anims) {
+      const m = /^breathe-(\d+)-(\d+)$/.exec((a as CSSAnimation).animationName);
+      if (!m) continue;
+      fraction = Number(m[1]) / (Number(m[1]) + Number(m[2]));
+      const duration = Number(a.effect?.getComputedTiming().duration ?? 0);
+      a.pause();
+      a.currentTime = fraction * duration;
+    }
+    return fraction;
+  });
+}
